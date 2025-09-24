@@ -52,18 +52,18 @@ export class SemanticAnalyzer {
    */
   private extractEntities(): EntityExtraction {
     return {
-      people: this.extractPeople(this.content.split(/\s+/)),
-      organizations: this.extractOrganizations(this.content.split(/\s+/)),
-      locations: this.extractLocations(this.content.split(/\s+/)),
-      products: this.extractProducts(this.content.split(/\s+/)),
-      technologies: this.extractTechnologies(this.content.split(/\s+/))
+      people: this.extractPeople(),
+      organizations: this.extractOrganizations(),
+      locations: this.extractLocations(),
+      products: this.extractProducts(),
+      technologies: this.extractTechnologies()
     };
   }
 
   /**
    * Extract people names (simplified approach)
    */
-  private extractPeople(words: string[]): string[] {
+  private extractPeople(): string[] {
     const peoplePatterns = [
       /^[A-Z][a-z]+ [A-Z][a-z]+$/, // First Last
       /^[A-Z]\. [A-Z][a-z]+$/, // F. Last
@@ -89,7 +89,7 @@ export class SemanticAnalyzer {
   /**
    * Extract organization names
    */
-  private extractOrganizations(words: string[]): string[] {
+  private extractOrganizations(): string[] {
     const orgKeywords = ['inc', 'corp', 'llc', 'ltd', 'company', 'corporation', 'enterprise', 'group', 'systems', 'solutions'];
     const organizations: string[] = [];
 
@@ -114,7 +114,7 @@ export class SemanticAnalyzer {
   /**
    * Extract location names
    */
-  private extractLocations(words: string[]): string[] {
+  private extractLocations(): string[] {
     const locationKeywords = ['city', 'state', 'country', 'street', 'avenue', 'road', 'boulevard', 'park', 'square'];
     const locations: string[] = [];
 
@@ -138,7 +138,7 @@ export class SemanticAnalyzer {
   /**
    * Extract product names
    */
-  private extractProducts(words: string[]): string[] {
+  private extractProducts(): string[] {
     const productKeywords = ['model', 'version', 'series', 'pro', 'max', 'mini', 'plus', 'edition'];
     const products: string[] = [];
 
@@ -162,7 +162,7 @@ export class SemanticAnalyzer {
   /**
    * Extract technology terms
    */
-  private extractTechnologies(words: string[]): string[] {
+  private extractTechnologies(): string[] {
     const techKeywords = [
       'api', 'javascript', 'python', 'react', 'vue', 'angular', 'node', 'php', 'java', 'c++', 'c#',
       'html', 'css', 'sql', 'mongodb', 'mysql', 'postgresql', 'redis', 'docker', 'kubernetes',

@@ -13,10 +13,10 @@ import {
 
 export class KeywordInferenceEngine {
   private structuredData: StructuredOnPageData;
-  private urlKeywords: string[];
-  private titleKeywords: string[];
-  private headingKeywords: string[];
-  private metaKeywords: string[];
+  private urlKeywords: string[] = [];
+  private titleKeywords: string[] = [];
+  private headingKeywords: string[] = [];
+  private metaKeywords: string[] = [];
   private metaTagKeywords: string[] = [];
 
   constructor(structuredData: StructuredOnPageData) {
