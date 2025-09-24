@@ -4,7 +4,7 @@
  */
 
 import { HTMLParser } from './html-parser';
-import { SemanticAnalyzer } from './semantic-analyzer';
+import { AdvancedSemanticAnalyzer } from './advanced-semantic-analyzer';
 import { KeywordInferenceEngine } from './keyword-inference';
 import { GeminiClient } from './gemini-client';
 import { 
@@ -47,8 +47,8 @@ export class SEOAnalyzer {
       const structuredData = parser.buildStructuredOnPageData();
       const content = parser.extractMainContent();
 
-      // Perform semantic analysis
-      const semanticAnalyzer = new SemanticAnalyzer(
+      // Perform advanced semantic analysis
+      const semanticAnalyzer = new AdvancedSemanticAnalyzer(
         content,
         structuredData.headings_and_keywords,
         structuredData.url_analysis.keywords,
@@ -60,12 +60,13 @@ export class SEOAnalyzer {
       const keywordEngine = new KeywordInferenceEngine(structuredData);
       const keywordAnalysis = keywordEngine.inferKeywords();
 
-      // Create base analysis result
+      // Create base analysis result with new structure
       const analysisResult: SEOAnalysisResult = {
         page_metadata: pageMetadata,
-        inferred_keywords_analysis: keywordAnalysis,
         structured_on_page_data: structuredData,
-        content_semantic_analysis: semanticAnalysis,
+        semantic_analysis: semanticAnalysis,
+        inferred_keywords: keywordAnalysis,
+        ai_insights: null, // Will be populated by AI analysis if enabled
         gemini_analysis: {
           reasoning_primary_keywords: '',
           reasoning_secondary_keywords: '',
@@ -180,8 +181,8 @@ export class SEOAnalyzer {
     hasAIAnalysis: boolean;
   } {
     return {
-      primaryKeywords: result.inferred_keywords_analysis.primary.keywords.map(kw => kw.term),
-      secondaryKeywords: result.inferred_keywords_analysis.secondary.keywords.map(kw => kw.term),
+      primaryKeywords: result.inferred_keywords.primary.keywords.map(kw => kw.term),
+      secondaryKeywords: result.inferred_keywords.secondary.keywords.map(kw => kw.term),
       wordCount: result.structured_on_page_data.word_count,
       headingCount: result.structured_on_page_data.headings_and_keywords.length,
       hasAIAnalysis: !!result.gemini_analysis.reasoning_primary_keywords
@@ -217,12 +218,12 @@ export class SEOAnalyzer {
     lines.push('Type,Keyword,Confidence Score,Source Locations');
     
     // Primary keywords
-    result.inferred_keywords_analysis.primary.keywords.forEach(kw => {
+    result.inferred_keywords.primary.keywords.forEach(kw => {
       lines.push(`Primary,${kw.term},${kw.confidence_score || 0},${kw.extracted_from.join(';')}`);
     });
     
     // Secondary keywords
-    result.inferred_keywords_analysis.secondary.keywords.forEach(kw => {
+    result.inferred_keywords.secondary.keywords.forEach(kw => {
       lines.push(`Secondary,${kw.term},${kw.confidence_score || 0},${kw.extracted_from.join(';')}`);
     });
     
@@ -243,7 +244,7 @@ export class SEOAnalyzer {
     
     // Primary Keywords
     lines.push('## Primary Keywords');
-    result.inferred_keywords_analysis.primary.keywords.forEach(kw => {
+    result.inferred_keywords.primary.keywords.forEach(kw => {
       lines.push(`- **${kw.term}** (${Math.round((kw.confidence_score || 0) * 100)}% confidence)`);
       lines.push(`  - Found in: ${kw.extracted_from.join(', ')}`);
     });
@@ -251,7 +252,7 @@ export class SEOAnalyzer {
     
     // Secondary Keywords
     lines.push('## Secondary Keywords');
-    result.inferred_keywords_analysis.secondary.keywords.slice(0, 10).forEach(kw => {
+    result.inferred_keywords.secondary.keywords.slice(0, 10).forEach(kw => {
       lines.push(`- **${kw.term}** (${Math.round((kw.confidence_score || 0) * 100)}% confidence)`);
     });
     lines.push('');

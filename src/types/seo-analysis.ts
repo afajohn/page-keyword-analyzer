@@ -85,12 +85,54 @@ export interface FrequentTerm {
   tf_idf_score?: number;
 }
 
+export interface CoreTopicAnalysis {
+  main_topic: {
+    topic: string;
+    confidence_score: number;
+    reasoning: string;
+  };
+  inferred_entities: {
+    people: string[];
+    organizations: string[];
+    locations: string[];
+    products: string[];
+    technologies: string[];
+  };
+  co_occurring_terms: string[];
+}
+
 export interface ContentSemanticAnalysis {
+  core_topic_analysis: CoreTopicAnalysis;
   entity_extraction: EntityExtraction;
   semantic_relationships: SemanticRelationship[];
   top_frequent_terms: FrequentTerm[];
   readability_score?: number;
   content_topics: string[];
+  // Advanced analysis features
+  eeat_score?: EEATScore;
+  query_fan_out?: QueryFanOutAnalysis;
+  content_quality_score?: number;
+  topical_authority_score?: number;
+  user_intent_signals?: UserIntentSignals;
+}
+
+export interface AIInsights {
+  topical_authority_score: {
+    score: number;
+    reasoning: string;
+  };
+  keyword_gap_analysis: {
+    missing_primary_keywords: string[];
+    missing_long_tail_keywords: string[];
+  };
+  optimization_potential: {
+    aeo: { score: number; reasoning: string };
+    geo: { score: number; reasoning: string };
+  };
+  content_strategy_recommendation: {
+    summary: string;
+    suggestions: string[];
+  };
 }
 
 export interface GeminiAnalysis {
@@ -103,6 +145,43 @@ export interface GeminiAnalysis {
   confidence_assessment: string;
   best_keyword?: string;
   best_long_tail_keyword?: string;
+  processing_time_ms?: number;
+  timestamp?: string;
+}
+
+export interface EEATScore {
+  expertise: number;
+  experience: number;
+  authoritativeness: number;
+  trustworthiness: number;
+  overall: number;
+}
+
+export interface QueryFanOutAnalysis {
+  primary_topics: string[];
+  related_queries: string[];
+  content_gaps: string[];
+  expansion_opportunities: string[];
+  semantic_clusters: Array<{
+    topic: string;
+    related_keywords: string[];
+    strength: number;
+  }>;
+}
+
+export interface UserIntentSignals {
+  informational: number;
+  navigational: number;
+  transactional: number;
+  commercial: number;
+}
+
+export interface AdvancedSemanticAnalysis extends ContentSemanticAnalysis {
+  eeat_score?: EEATScore;
+  query_fan_out?: QueryFanOutAnalysis;
+  content_quality_score?: number;
+  topical_authority_score?: number;
+  user_intent_signals?: UserIntentSignals;
 }
 
 export interface PageMetadata {
@@ -116,9 +195,10 @@ export interface PageMetadata {
 
 export interface SEOAnalysisResult {
   page_metadata: PageMetadata;
-  inferred_keywords_analysis: InferredKeywordsAnalysis;
   structured_on_page_data: StructuredOnPageData;
-  content_semantic_analysis: ContentSemanticAnalysis;
+  semantic_analysis: ContentSemanticAnalysis;
+  inferred_keywords: InferredKeywordsAnalysis;
+  ai_insights: AIInsights | null;
   gemini_analysis: GeminiAnalysis;
   analysis_timestamp: string;
   processing_time_ms: number;

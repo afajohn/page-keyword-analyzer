@@ -46,13 +46,37 @@ export class HTMLParser {
 
   /**
    * Extract headings with keyword analysis
+   * Focuses on headings within the main content areas
    */
   extractHeadingsWithKeywords(): HeadingWithKeywords[] {
     const headings: HeadingWithKeywords[] = [];
     const headingTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
 
+    // Priority content selectors to focus heading extraction
+    const prioritySelectors = [
+      '.blog-hero-container',
+      '.blog-content-container', 
+      '#main-content-wrapper',
+      '.content-area'
+    ];
+
+    // First, try to find headings within priority content areas
+    let contentContainer = null;
+    for (const selector of prioritySelectors) {
+      const container = this.$(selector).first();
+      if (container.length > 0) {
+        contentContainer = container;
+        break;
+      }
+    }
+
+    // If no priority container found, use body
+    if (!contentContainer) {
+      contentContainer = this.$('body');
+    }
+
     headingTags.forEach((tag, index) => {
-      this.$(tag).each((i, element) => {
+      contentContainer.find(tag).each((i, element) => {
         const text = this.$(element).text().trim();
         if (text) {
           headings.push({
@@ -115,9 +139,33 @@ export class HTMLParser {
           .filter(k => k.length > 1)
       : [];
 
-    // Extract image alt texts
+    // Extract image alt texts from main content areas
     const imageAltTexts: ImageAltText[] = [];
-    this.$('img').each((i, element) => {
+    
+    // Priority content selectors for image extraction
+    const prioritySelectors = [
+      '.blog-hero-container',
+      '.blog-content-container', 
+      '#main-content-wrapper',
+      '.content-area'
+    ];
+
+    // First, try to find images within priority content areas
+    let contentContainer = null;
+    for (const selector of prioritySelectors) {
+      const container = this.$(selector).first();
+      if (container.length > 0) {
+        contentContainer = container;
+        break;
+      }
+    }
+
+    // If no priority container found, use body
+    if (!contentContainer) {
+      contentContainer = this.$('body');
+    }
+
+    contentContainer.find('img').each((i, element) => {
       const alt = this.$(element).attr('alt') || '';
       const src = this.$(element).attr('src') || '';
       if (alt) {
@@ -140,10 +188,19 @@ export class HTMLParser {
 
   /**
    * Extract main content text for analysis
+   * Prioritizes specific blog/content selectors as requested
    */
   extractMainContent(): string {
-    // Try to find main content areas
-    const contentSelectors = [
+    // Prioritize specific blog/content selectors as requested
+    const prioritySelectors = [
+      '.blog-hero-container',
+      '.blog-content-container', 
+      '#main-content-wrapper',
+      '.content-area'
+    ];
+
+    // Fallback to general content selectors
+    const fallbackSelectors = [
       'main',
       'article',
       '[role="main"]',
@@ -154,20 +211,42 @@ export class HTMLParser {
     ];
 
     let content = '';
-    for (const selector of contentSelectors) {
-      const element = this.$(selector).first();
-      if (element.length > 0) {
-        content = element.text();
-        break;
+    let maxContentLength = 0;
+
+    // First, try priority selectors and use the one with the most content
+    for (const selector of prioritySelectors) {
+      const elements = this.$(selector);
+      if (elements.length > 0) {
+        elements.each((_, element) => {
+          const text = this.$(element).text().trim();
+          if (text.length > maxContentLength && text.length > 200) {
+            content = text;
+            maxContentLength = text.length;
+          }
+        });
       }
     }
 
-    // Fallback to body if no main content found
-    if (!content) {
-      content = this.$('body').text();
+    // If no substantial content found in priority selectors, try fallback selectors
+    if (maxContentLength < 200) {
+      for (const selector of fallbackSelectors) {
+        const element = this.$(selector).first();
+        if (element.length > 0) {
+          const text = element.text().trim();
+          if (text.length > maxContentLength) {
+            content = text;
+            maxContentLength = text.length;
+          }
+        }
+      }
     }
 
-    return content.trim();
+    // Final fallback to body if no substantial content found
+    if (maxContentLength < 100) {
+      content = this.$('body').text().trim();
+    }
+
+    return content;
   }
 
   /**

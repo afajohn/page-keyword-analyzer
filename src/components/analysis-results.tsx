@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { 
   SEOAnalysisResult, 
-  KeywordAnalysis 
+  KeywordAnalysis
 } from '@/types/seo-analysis'
 import { 
   formatConfidenceScore, 
@@ -32,7 +32,7 @@ interface AnalysisResultsProps {
 
 export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
   const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'keywords' | 'ai-analysis' | 'technical'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'keywords' | 'eeat-analysis' | 'query-fanout' | 'ai-analysis' | 'technical'>('overview')
 
   const handleCopyResults = async () => {
     try {
@@ -66,11 +66,11 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
     const lines: string[] = []
     lines.push('Type,Keyword,Confidence Score,Source Locations')
     
-    result.inferred_keywords_analysis.primary.keywords.forEach(kw => {
+    result.inferred_keywords.primary.keywords.forEach(kw => {
       lines.push(`Primary,${kw.term},${kw.confidence_score || 0},${kw.extracted_from.join(';')}`)
     })
-    
-    result.inferred_keywords_analysis.secondary.keywords.forEach(kw => {
+
+    result.inferred_keywords.secondary.keywords.forEach(kw => {
       lines.push(`Secondary,${kw.term},${kw.confidence_score || 0},${kw.extracted_from.join(';')}`)
     })
     
@@ -86,12 +86,12 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
     lines.push('')
     
     lines.push('## Primary Keywords')
-    result.inferred_keywords_analysis.primary.keywords.forEach(kw => {
+    result.inferred_keywords.primary.keywords.forEach(kw => {
       lines.push(`- **${kw.term}** (${formatConfidenceScore(kw.confidence_score || 0)} confidence)`)
     })
     
     lines.push('## Secondary Keywords')
-    result.inferred_keywords_analysis.secondary.keywords.slice(0, 10).forEach(kw => {
+    result.inferred_keywords.secondary.keywords.slice(0, 10).forEach(kw => {
       lines.push(`- **${kw.term}** (${formatConfidenceScore(kw.confidence_score || 0)} confidence)`)
     })
     
@@ -121,6 +121,8 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: TrendingUp },
     { id: 'keywords', label: 'Keywords', icon: Target },
+    { id: 'eeat-analysis', label: 'E-E-A-T', icon: Users },
+    { id: 'query-fanout', label: 'Query Fan-Out', icon: Zap },
     { id: 'ai-analysis', label: 'AI Analysis', icon: Brain },
     { id: 'technical', label: 'Technical', icon: FileText }
   ]
@@ -165,7 +167,7 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as 'overview' | 'keywords' | 'ai-analysis' | 'technical')}
+              onClick={() => setActiveTab(tab.id as 'overview' | 'keywords' | 'eeat-analysis' | 'query-fanout' | 'ai-analysis' | 'technical')}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'bg-white text-gray-900 shadow-sm'
@@ -181,13 +183,13 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
 
       {/* Tab Content */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-blue-600" />
                 <div>
-                  <div className="text-2xl font-bold">{result.inferred_keywords_analysis.primary.keywords.length}</div>
+                  <div className="text-2xl font-bold">{result.inferred_keywords.primary.keywords.length}</div>
                   <div className="text-sm text-gray-600">Primary Keywords</div>
                 </div>
               </div>
@@ -199,7 +201,7 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
               <div className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-green-600" />
                 <div>
-                  <div className="text-2xl font-bold">{result.inferred_keywords_analysis.secondary.keywords.length}</div>
+                  <div className="text-2xl font-bold">{result.inferred_keywords.secondary.keywords.length}</div>
                   <div className="text-sm text-gray-600">Secondary Keywords</div>
                 </div>
               </div>
@@ -229,6 +231,30 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-indigo-600" />
+                <div>
+                  <div className="text-2xl font-bold">{result.semantic_analysis.eeat_score?.overall || 0}%</div>
+                  <div className="text-sm text-gray-600">E-E-A-T Score</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-yellow-600" />
+                <div>
+                  <div className="text-2xl font-bold">{result.semantic_analysis.query_fan_out?.related_queries.length || 0}</div>
+                  <div className="text-sm text-gray-600">Related Queries</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -242,18 +268,18 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                 Primary Keywords
               </CardTitle>
               <CardDescription>
-                Confidence: {formatConfidenceScore(result.inferred_keywords_analysis.primary.confidence_score)}
+                Confidence: {formatConfidenceScore(result.inferred_keywords.primary.confidence_score)}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {result.inferred_keywords_analysis.primary.keywords.map((keyword, index) => (
+                {result.inferred_keywords.primary.keywords.map((keyword, index) => (
                   <KeywordCard key={index} keyword={keyword} />
                 ))}
               </div>
               <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Reasoning:</strong> {result.inferred_keywords_analysis.primary.reasoning_summary}
+                  <strong>Reasoning:</strong> {result.inferred_keywords.primary.reasoning_summary}
                 </p>
               </div>
             </CardContent>
@@ -267,19 +293,182 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                 Secondary Keywords
               </CardTitle>
               <CardDescription>
-                Confidence: {formatConfidenceScore(result.inferred_keywords_analysis.secondary.confidence_score)}
+                Confidence: {formatConfidenceScore(result.inferred_keywords.secondary.confidence_score)}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {result.inferred_keywords_analysis.secondary.keywords.slice(0, 12).map((keyword, index) => (
+                {result.inferred_keywords.secondary.keywords.slice(0, 12).map((keyword, index) => (
                   <KeywordCard key={index} keyword={keyword} />
                 ))}
               </div>
               <div className="mt-4 p-3 bg-green-50 rounded-lg">
                 <p className="text-sm text-green-800">
-                  <strong>Reasoning:</strong> {result.inferred_keywords_analysis.secondary.reasoning_summary}
+                  <strong>Reasoning:</strong> {result.inferred_keywords.secondary.reasoning_summary}
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === 'eeat-analysis' && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-indigo-600" />
+                E-E-A-T Analysis
+              </CardTitle>
+              <CardDescription>
+                Expertise, Experience, Authoritativeness, and Trustworthiness Assessment
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {result.semantic_analysis.eeat_score?.expertise || 0}%
+                  </div>
+                  <div className="text-sm text-blue-800">Expertise</div>
+                </div>
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {result.semantic_analysis.eeat_score?.experience || 0}%
+                  </div>
+                  <div className="text-sm text-green-800">Experience</div>
+                </div>
+                <div className="p-4 bg-purple-50 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {result.semantic_analysis.eeat_score?.authoritativeness || 0}%
+                  </div>
+                  <div className="text-sm text-purple-800">Authoritativeness</div>
+                </div>
+                <div className="p-4 bg-orange-50 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {result.semantic_analysis.eeat_score?.trustworthiness || 0}%
+                  </div>
+                  <div className="text-sm text-orange-800">Trustworthiness</div>
+                </div>
+              </div>
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-black">Overall E-E-A-T Score</span>
+                  <span className="text-2xl font-bold">
+                    {result.semantic_analysis.eeat_score?.overall || 0}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${result.semantic_analysis.eeat_score?.overall || 0}%` }}
+                  ></div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* E-E-A-T Assessment Explanations */}
+          {result.gemini_analysis?.eeat_assessment && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-indigo-600" />
+                  AI E-E-A-T Assessment
+                </CardTitle>
+                <CardDescription>
+                  Detailed analysis of expertise, experience, authoritativeness, and trustworthiness
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="prose prose-sm max-w-none">
+                  <div className="whitespace-pre-line text-white-500 leading-relaxed">
+                    {result.gemini_analysis.eeat_assessment}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'query-fanout' && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-yellow-600" />
+                Query Fan-Out Analysis
+              </CardTitle>
+              <CardDescription>
+                Content expansion opportunities and related query analysis
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium mb-3">Primary Topics</h4>
+                  <div className="space-y-2">
+                    {result.semantic_analysis.query_fan_out?.primary_topics.map((topic, index) => (
+                      <div key={index} className="p-2 bg-blue-50 rounded text-sm text-black font-medium">
+                        {topic}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-3">Related Queries</h4>
+                  <div className="space-y-2">
+                    {result.semantic_analysis.query_fan_out?.related_queries.slice(0, 8).map((query, index) => (
+                      <div key={index} className="p-2 bg-green-50 rounded text-sm text-black font-medium">
+                        {query}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <h4 className="font-medium mb-3">Content Gaps</h4>
+                <div className="flex flex-wrap gap-2">
+                  {result.semantic_analysis.query_fan_out?.content_gaps.map((gap, index) => (
+                    <span key={index} className="px-3 py-1 bg-red-100 text-black rounded-full text-sm font-medium">
+                      {gap}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <h4 className="font-medium mb-3">Expansion Opportunities</h4>
+                <div className="flex flex-wrap gap-2">
+                  {result.semantic_analysis.query_fan_out?.expansion_opportunities.slice(0, 10).map((opportunity, index) => (
+                    <span key={index} className="px-3 py-1 bg-purple-100 text-black rounded-full text-sm font-medium">
+                      {opportunity}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <h4 className="font-medium mb-3">Semantic Clusters</h4>
+                <div className="space-y-4">
+                  {result.semantic_analysis.query_fan_out?.semantic_clusters.map((cluster, index) => (
+                    <div key={index} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium">{cluster.topic}</span>
+                        <span className="text-sm text-gray-600">Strength: {cluster.strength}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {cluster.related_keywords.map((keyword, kIndex) => (
+                          <span key={kIndex} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -312,28 +501,13 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                 </CardHeader>
                 <CardContent>
                   <div className="prose max-w-none">
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    <div className="whitespace-pre-line text-sm leading-relaxed text-white">
                       {result.gemini_analysis.seo_recommendations_latest_algorithms}
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-indigo-600" />
-                    E-E-A-T Assessment
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose max-w-none">
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                      {result.gemini_analysis.eeat_assessment}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
 
               <Card>
                 <CardHeader>
@@ -344,7 +518,7 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                 </CardHeader>
                 <CardContent>
                   <div className="prose max-w-none">
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    <div className="whitespace-pre-line text-sm leading-relaxed text-white">
                       {result.gemini_analysis.ai_overview_optimization}
                     </div>
                   </div>
@@ -395,19 +569,19 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                   <strong>Entities Found:</strong>
                   <div className="mt-2 grid grid-cols-2 gap-4">
                     <div>
-                      <div className="text-sm text-gray-600">People: {result.content_semantic_analysis.entity_extraction.people.length}</div>
-                      <div className="text-sm text-gray-600">Organizations: {result.content_semantic_analysis.entity_extraction.organizations.length}</div>
+                      <div className="text-sm text-gray-600">People: {result.semantic_analysis.entity_extraction.people.length}</div>
+                      <div className="text-sm text-gray-600">Organizations: {result.semantic_analysis.entity_extraction.organizations.length}</div>
                     </div>
                     <div>
-                      <div className="text-sm text-gray-600">Locations: {result.content_semantic_analysis.entity_extraction.locations.length}</div>
-                      <div className="text-sm text-gray-600">Technologies: {result.content_semantic_analysis.entity_extraction.technologies.length}</div>
+                      <div className="text-sm text-gray-600">Locations: {result.semantic_analysis.entity_extraction.locations.length}</div>
+                      <div className="text-sm text-gray-600">Technologies: {result.semantic_analysis.entity_extraction.technologies.length}</div>
                     </div>
                   </div>
                 </div>
                 <div>
                   <strong>Top Frequent Terms:</strong>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {result.content_semantic_analysis.top_frequent_terms.slice(0, 10).map((term, index) => (
+                    {result.semantic_analysis.top_frequent_terms.slice(0, 10).map((term, index) => (
                       <span key={index} className="px-2 py-1 bg-gray-100 rounded text-sm text-black">
                         {term.keyword} ({term.count})
                       </span>
