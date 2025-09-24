@@ -86,7 +86,7 @@ export class HTMLParser {
         keywords: urlKeywords,
         path_segments: pathSegments
       };
-    } catch (error) {
+    } catch {
       return {
         slug: '',
         keywords: [],

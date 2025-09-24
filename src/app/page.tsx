@@ -73,7 +73,7 @@ export default function Home() {
               <Zap className="h-12 w-12 text-orange-600 mx-auto mb-4" />
               <h3 className="font-semibold mb-2">Latest Algorithms</h3>
               <p className="text-sm text-gray-600">
-                Recommendations based on Google's Perspective update and LLMO best practices
+                Recommendations based on Google&apos;s Perspective update and LLMO best practices
               </p>
             </CardContent>
           </Card>

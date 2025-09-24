@@ -7,10 +7,7 @@ import {
   ContentSemanticAnalysis, 
   EntityExtraction, 
   SemanticRelationship, 
-  FrequentTerm,
-  KeywordAnalysis,
-  PrimaryKeywordAnalysis,
-  SecondaryKeywordAnalysis
+  FrequentTerm
 } from '@/types/seo-analysis';
 
 export class SemanticAnalyzer {
