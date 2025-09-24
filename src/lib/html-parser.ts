@@ -3,7 +3,7 @@
  * Extracts comprehensive on-page elements with semantic context
  */
 
-import * as cheerio from 'cheerio';
+import { load } from 'cheerio';
 import { 
   PageMetadata, 
   StructuredOnPageData, 
@@ -13,12 +13,14 @@ import {
   MetaDataAnalysis 
 } from '@/types/seo-analysis';
 
+type CheerioRoot = ReturnType<typeof load>;
+
 export class HTMLParser {
-  private $: cheerio.CheerioAPI;
+  private $: CheerioRoot;
   private url: string;
 
   constructor(html: string, url: string) {
-    this.$ = cheerio.load(html);
+    this.$ = load(html);
     this.url = url;
   }
 

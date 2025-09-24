@@ -221,7 +221,7 @@ Provide your analysis as a JSON object with the following structure:
     try {
       const result = await this.model.generateContent('Test connection');
       return !!result.response;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

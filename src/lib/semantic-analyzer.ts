@@ -51,14 +51,12 @@ export class SemanticAnalyzer {
    * Extract named entities from content
    */
   private extractEntities(): EntityExtraction {
-    const words = this.content.split(/\s+/);
-    
     return {
-      people: this.extractPeople(words),
-      organizations: this.extractOrganizations(words),
-      locations: this.extractLocations(words),
-      products: this.extractProducts(words),
-      technologies: this.extractTechnologies(words)
+      people: this.extractPeople(this.content.split(/\s+/)),
+      organizations: this.extractOrganizations(this.content.split(/\s+/)),
+      locations: this.extractLocations(this.content.split(/\s+/)),
+      products: this.extractProducts(this.content.split(/\s+/)),
+      technologies: this.extractTechnologies(this.content.split(/\s+/))
     };
   }
 
