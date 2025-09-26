@@ -14,7 +14,8 @@ export class GeminiClient {
 
   constructor(apiKey: string) {
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    // Use gemini-2.5-flash-lite for better availability and performance
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
 
   /**
@@ -37,6 +38,20 @@ export class GeminiClient {
       return this.parseGeminiResponse(text);
     } catch (error) {
       console.error('Gemini API Error:', error);
+      
+      // Provide more specific error messages based on the error type
+      if (error instanceof Error) {
+        if (error.message.includes('404')) {
+          throw new Error('Gemini model not found. Please check your API configuration.');
+        } else if (error.message.includes('403')) {
+          throw new Error('Invalid API key or insufficient permissions.');
+        } else if (error.message.includes('429')) {
+          throw new Error('API rate limit exceeded. Please try again later.');
+        } else if (error.message.includes('401')) {
+          throw new Error('Invalid API key. Please check your configuration.');
+        }
+      }
+      
       throw new Error('AI analysis is currently unavailable. Please try again later.');
     }
   }
@@ -134,22 +149,31 @@ Provide your analysis as a JSON object with the following structure:
    */
   private parseGeminiResponse(response: string): GeminiAnalysis {
     try {
-      // Try to extract JSON from the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const jsonStr = jsonMatch[0];
-        const parsed = JSON.parse(jsonStr);
+      // Try multiple JSON extraction methods
+      const jsonStr = this.extractJsonFromResponse(response);
+      
+      if (jsonStr) {
+        // Clean up common JSON issues
+        const cleanedJson = this.cleanJsonString(jsonStr);
         
-        // Validate and return structured response
-        return {
-          reasoning_primary_keywords: parsed.reasoning_primary_keywords || 'Analysis not available',
-          reasoning_secondary_keywords: parsed.reasoning_secondary_keywords || 'Analysis not available',
-          seo_recommendations_latest_algorithms: parsed.seo_recommendations_latest_algorithms || 'Recommendations not available',
-          eeat_assessment: parsed.eeat_assessment || 'E-E-A-T assessment not available',
-          user_intent_alignment: parsed.user_intent_alignment || 'User intent analysis not available',
-          ai_overview_optimization: parsed.ai_overview_optimization || 'AI Overview optimization not available',
-          confidence_assessment: parsed.confidence_assessment || 'Confidence assessment not available'
-        };
+        try {
+          const parsed = JSON.parse(cleanedJson);
+          
+          // Validate and return structured response
+          return {
+            reasoning_primary_keywords: parsed.reasoning_primary_keywords || 'Analysis not available',
+            reasoning_secondary_keywords: parsed.reasoning_secondary_keywords || 'Analysis not available',
+            seo_recommendations_latest_algorithms: parsed.seo_recommendations_latest_algorithms || 'Recommendations not available',
+            eeat_assessment: parsed.eeat_assessment || 'E-E-A-T assessment not available',
+            user_intent_alignment: parsed.user_intent_alignment || 'User intent analysis not available',
+            ai_overview_optimization: parsed.ai_overview_optimization || 'AI Overview optimization not available',
+            confidence_assessment: parsed.confidence_assessment || 'Confidence assessment not available'
+          };
+        } catch (jsonError) {
+          console.error('JSON parsing failed, trying text parsing:', jsonError);
+          console.error('Cleaned JSON that failed:', cleanedJson.substring(0, 500) + '...');
+          return this.parseTextResponse(response);
+        }
       } else {
         // Fallback: parse as text sections
         return this.parseTextResponse(response);
@@ -161,35 +185,157 @@ Provide your analysis as a JSON object with the following structure:
   }
 
   /**
-   * Parse text-based response when JSON parsing fails
+   * Extract JSON from response using multiple methods
    */
-  private parseTextResponse(response: string): GeminiAnalysis {
-    const sections = response.split(/\n(?=\d+\.|\*\*)/);
+  private extractJsonFromResponse(response: string): string | null {
+    // Method 1: Look for JSON between ```json and ```
+    const codeBlockMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
+    if (codeBlockMatch) {
+      return codeBlockMatch[1];
+    }
     
-    return {
-      reasoning_primary_keywords: this.extractSection(sections, 'primary keyword', 'reasoning'),
-      reasoning_secondary_keywords: this.extractSection(sections, 'secondary keyword', 'reasoning'),
-      seo_recommendations_latest_algorithms: this.extractSection(sections, 'recommendation', 'seo'),
-      eeat_assessment: this.extractSection(sections, 'e-e-a-t', 'assessment'),
-      user_intent_alignment: this.extractSection(sections, 'user intent', 'alignment'),
-      ai_overview_optimization: this.extractSection(sections, 'ai overview', 'optimization'),
-      confidence_assessment: this.extractSection(sections, 'confidence', 'assessment')
-    };
+    // Method 2: Look for JSON between ``` and ```
+    const genericBlockMatch = response.match(/```\s*([\s\S]*?)\s*```/);
+    if (genericBlockMatch && genericBlockMatch[1].trim().startsWith('{')) {
+      return genericBlockMatch[1];
+    }
+    
+    // Method 3: Look for JSON object pattern
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return jsonMatch[0];
+    }
+    
+    return null;
   }
 
   /**
-   * Extract specific section from text response
+   * Clean JSON string to fix common formatting issues
    */
-  private extractSection(sections: string[], keyword: string, type: string): string {
-    const relevantSection = sections.find(section => 
-      section.toLowerCase().includes(keyword) || section.toLowerCase().includes(type)
-    );
+  private cleanJsonString(jsonStr: string): string {
+    return jsonStr
+      // Remove any text before the first {
+      .replace(/^[^{]*/, '')
+      // Remove any text after the last }
+      .replace(/}[^}]*$/, '}')
+      // Fix escaped quotes that are double-escaped
+      .replace(/\\"/g, '"')
+      // Fix unescaped quotes in strings - more comprehensive approach
+      .replace(/"([^"]*)"([^"]*)"([^"]*)"/g, (match, p1, p2, p3) => {
+        return `"${p1}\\"${p2}\\"${p3}"`;
+      })
+      // Fix missing colons after property names
+      .replace(/"([^"]+)"\s*([^":\s][^"]*)/g, (match, prop, value) => {
+        // Only fix if it looks like a property name followed by a value
+        if (value.trim() && !value.includes(':')) {
+          return `"${prop}": "${value.trim()}"`;
+        }
+        return match;
+      })
+      // Remove any control characters
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      // Fix common JSON formatting issues
+      .replace(/\n\s*\n/g, '\n')
+      // Ensure proper spacing around colons
+      .replace(/:\s*"/g, ': "')
+      // Fix specific issue with backticks in strings
+      .replace(/"([^"]*`[^"]*)"/g, (match, content) => {
+        return `"${content.replace(/`/g, '\\`')}"`;
+      })
+      // Fix bad escaped characters like \n, \t, etc.
+      .replace(/\\([^"\\\/bfnrt])/g, '\\\\$1')
+      // Fix specific issue with \n in JSON strings
+      .replace(/\\n/g, '\\\\n')
+      .trim();
+  }
+
+  /**
+   * Parse text-based response when JSON parsing fails
+   */
+  private parseTextResponse(response: string): GeminiAnalysis {
+    console.log('Parsing text response as fallback...')
     
-    if (relevantSection) {
-      return relevantSection.trim();
+    // Try to extract structured information from text
+    const extractField = (fieldName: string): string => {
+      const patterns = [
+        new RegExp(`"${fieldName}"\\s*:\\s*"([^"]+)"`, 'i'),
+        new RegExp(`${fieldName}\\s*:\\s*"([^"]+)"`, 'i'),
+        new RegExp(`${fieldName}\\s*:\\s*([^\\n]+)`, 'i'),
+        new RegExp(`"${fieldName}"\\s*:\\s*([^\\n,}]+)`, 'i')
+      ]
+      
+      for (const pattern of patterns) {
+        const match = response.match(pattern)
+        if (match && match[1]) {
+          return match[1].trim().replace(/^["']|["']$/g, '')
+        }
+      }
+      
+      return ''
     }
+
+    // Extract all fields
+    const reasoning_primary_keywords = extractField('reasoning_primary_keywords')
+    const reasoning_secondary_keywords = extractField('reasoning_secondary_keywords')
+    const seo_recommendations_latest_algorithms = extractField('seo_recommendations_latest_algorithms')
+    const eeat_assessment = extractField('eeat_assessment')
+    const user_intent_alignment = extractField('user_intent_alignment')
+    const ai_overview_optimization = extractField('ai_overview_optimization')
+    const confidence_assessment = extractField('confidence_assessment')
+    const best_keyword = extractField('best_keyword')
+    const best_long_tail_keyword = extractField('best_long_tail_keyword')
+
+    // If we couldn't extract structured data, return the raw response formatted
+    if (!reasoning_primary_keywords && !reasoning_secondary_keywords) {
+      return {
+        reasoning_primary_keywords: this.formatRawResponse(response, 'Primary Keywords Analysis'),
+        reasoning_secondary_keywords: this.formatRawResponse(response, 'Secondary Keywords Analysis'),
+        seo_recommendations_latest_algorithms: this.formatRawResponse(response, 'SEO Recommendations'),
+        eeat_assessment: this.formatRawResponse(response, 'E-E-A-T Assessment'),
+        user_intent_alignment: this.formatRawResponse(response, 'User Intent Alignment'),
+        ai_overview_optimization: this.formatRawResponse(response, 'AI Overview Optimization'),
+        confidence_assessment: this.formatRawResponse(response, 'Confidence Assessment'),
+        best_keyword: '',
+        best_long_tail_keyword: ''
+      }
+    }
+
+    return {
+      reasoning_primary_keywords,
+      reasoning_secondary_keywords,
+      seo_recommendations_latest_algorithms,
+      eeat_assessment,
+      user_intent_alignment,
+      ai_overview_optimization,
+      confidence_assessment,
+      best_keyword,
+      best_long_tail_keyword
+    }
+  }
+
+  /**
+   * Format raw response into readable sections
+   */
+  private formatRawResponse(response: string, sectionTitle: string): string {
+    // Clean up the response
+    const cleaned = response
+      .replace(/^[^{]*/, '') // Remove text before first {
+      .replace(/}[^}]*$/, '}') // Remove text after last }
+      .replace(/\\n/g, '\n') // Convert \n to actual newlines
+      .replace(/\\"/g, '"') // Fix escaped quotes
+      .replace(/\\`/g, '`') // Fix escaped backticks
+      .trim()
+
+    // Try to extract content for this specific section
+    const sectionPattern = new RegExp(`"([^"]*${sectionTitle.toLowerCase().replace(/[^a-z0-9]/g, '[^"]*')}[^"]*)"`, 'i')
+    const match = cleaned.match(sectionPattern)
     
-    return `Analysis for ${keyword} ${type} not available in the response.`;
+    if (match && match[1]) {
+      return `${sectionTitle}:\n\n${match[1].replace(/\\n/g, '\n')}`
+    }
+
+    // If no specific section found, return formatted general content
+    return `${sectionTitle}:\n\n${cleaned.substring(0, 500)}${cleaned.length > 500 ? '...' : ''}`
   }
 
   /**
@@ -211,7 +357,7 @@ Provide your analysis as a JSON object with the following structure:
    * Validate API key format
    */
   static validateApiKey(apiKey: string): boolean {
-    return !!apiKey && apiKey.length > 20 && apiKey.startsWith('AI');
+    return !!apiKey && apiKey.length > 10 && (apiKey.startsWith('AI') || apiKey.startsWith('GEMINI'));
   }
 
   /**

@@ -46,12 +46,21 @@ export interface UrlAnalysis {
   path_segments: string[];
 }
 
+export interface MetaKeywordsInfo {
+  has_meta_keywords: boolean;
+  keywords: string[];
+  keyword_count: number;
+  raw_content?: string;
+  warning?: string; // Warning about meta keywords being deprecated
+}
+
 export interface MetaDataAnalysis {
   description_keywords: string[];
   image_alt_texts: ImageAltText[];
   canonical_url?: string;
   robots_meta?: string;
   meta_keywords?: string[];
+  meta_keywords_analysis: MetaKeywordsInfo;
 }
 
 export interface StructuredOnPageData {
@@ -135,6 +144,61 @@ export interface AIInsights {
   };
 }
 
+export interface SearchVolumePotential {
+  estimated_monthly_searches: number;
+  competition_level: 'low' | 'medium' | 'high';
+  search_trend: 'rising' | 'stable' | 'declining';
+  seasonal_pattern?: boolean;
+}
+
+export interface BERTContextAnalysis {
+  bidirectional_coherence: number;
+  contextual_relevance: number;
+  natural_language_score: number;
+  preposition_importance: number;
+  semantic_density: number;
+}
+
+export interface OptimizedKeywordRecommendation {
+  keyword: string;
+  keyword_type: 'primary' | 'secondary' | 'long_tail' | 'LSI' | 'semantic';
+  search_volume_potential: SearchVolumePotential;
+  bert_context_score: BERTContextAnalysis;
+  confidence_score: number;
+  reasoning: string;
+  current_performance: {
+    found_in_title: boolean;
+    found_in_meta_description: boolean;
+    found_in_h1: boolean;
+    found_in_content: boolean;
+    frequency: number;
+  };
+  optimization_recommendations: string[];
+}
+
+export interface MetaDescriptionOptimization {
+  current_description: string;
+  optimized_description: string;
+  optimization_score: number;
+  aeo_optimization: {
+    answer_focused: boolean;
+    featured_snippet_ready: boolean;
+    conversational_tone: boolean;
+  };
+  geo_optimization: {
+    location_relevant: boolean;
+    local_intent_clear: boolean;
+    geo_schema_ready: boolean;
+  };
+  ai_overview_optimization: {
+    structured_for_ai: boolean;
+    context_rich: boolean;
+    intent_aligned: boolean;
+  };
+  reasoning: string;
+  improvements: string[];
+}
+
 export interface GeminiAnalysis {
   reasoning_primary_keywords: string;
   reasoning_secondary_keywords: string;
@@ -147,6 +211,16 @@ export interface GeminiAnalysis {
   best_long_tail_keyword?: string;
   processing_time_ms?: number;
   timestamp?: string;
+  // Enhanced BERT-aware analysis
+  optimized_keywords?: OptimizedKeywordRecommendation[];
+  meta_description_optimization?: MetaDescriptionOptimization;
+  bert_context_analysis?: BERTContextAnalysis;
+  search_intent_analysis?: {
+    informational: number;
+    navigational: number;
+    transactional: number;
+    commercial: number;
+  };
 }
 
 export interface EEATScore {

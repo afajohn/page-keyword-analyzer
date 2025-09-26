@@ -142,7 +142,9 @@ export class KeywordInferenceEngine {
       });
     }
 
-    return Array.from(candidates);
+    // Filter: only keep multi-word, context-meaningful phrases
+    const filtered = Array.from(candidates).filter(kw => this.isValidPrimaryPhrase(kw));
+    return filtered;
   }
 
   /**
@@ -166,7 +168,9 @@ export class KeywordInferenceEngine {
     const frequentKeywords = this.getFrequentNonPrimaryKeywords();
     frequentKeywords.forEach(keyword => candidates.add(keyword));
 
-    return Array.from(candidates);
+    // Filter out generic single-word tokens from secondary suggestions
+    const filtered = Array.from(candidates).filter(kw => this.isAcceptableSecondary(kw));
+    return filtered;
   }
 
   /**
@@ -185,8 +189,12 @@ export class KeywordInferenceEngine {
         extractedFrom.push('semantic_analysis');
       }
       
-      // 2. Single words from core topic analysis get high priority
-      else if (this.isFromCoreTopic(keyword)) {
+      // 2. Single words are not eligible as primaries
+      else if (keyword.split(' ').length === 1) {
+        confidenceScore += 0;
+      }
+      // Core topic exact match (multi-word only)
+      else if (this.isFromCoreTopic(keyword) && keyword.split(' ').length >= 2) {
         confidenceScore += 0.5;
         extractedFrom.push('core_topic_analysis');
       }
@@ -253,6 +261,35 @@ export class KeywordInferenceEngine {
     ];
     
     return patterns.some(pattern => pattern.test(content));
+  }
+
+  /**
+   * Validate primary keyword phrase: multi-word, not generic, meaningful
+   */
+  private isValidPrimaryPhrase(phrase: string): boolean {
+    const genericBlocklist = new Set([
+      'before','after','into','scene','know','these','those','thing','things','good','bad',
+      'great','new','with','without','about','for','and','or','but','dating','filipina','filipino','women','men'
+    ]);
+    const tokens = phrase.toLowerCase().trim().split(/\s+/).filter(t => t.length > 1);
+    if (tokens.length < 2) return false;
+    if (tokens.some(t => genericBlocklist.has(t))) {
+      const strong = tokens.some(t => !genericBlocklist.has(t) && t.length >= 4);
+      if (!strong) return false;
+    }
+    const connectors = new Set(['for','with','without','in','on','at','by','from','to','of','about']);
+    const nonConnectorCount = tokens.filter(t => !connectors.has(t)).length;
+    return nonConnectorCount >= 2;
+  }
+
+  /**
+   * Acceptable secondary: allow phrases or non-generic single nouns
+   */
+  private isAcceptableSecondary(keyword: string): boolean {
+    const tokens = keyword.toLowerCase().trim().split(/\s+/);
+    if (tokens.length >= 2) return true;
+    const genericSingles = new Set(['before','after','into','scene','know','these','those','dating','filipina','foreign','men','women']);
+    return !genericSingles.has(tokens[0]);
   }
 
   /**
@@ -355,8 +392,11 @@ export class KeywordInferenceEngine {
       reasoning += "Confirmed by H1 heading. ";
     }
 
+    // Add modern SEO philosophy explanation
+    reasoning += this.getModernSEOExplanation(topKeyword);
+
     if (keywords.length > 1) {
-      reasoning += `Additional primary keywords: ${keywords.slice(1).map(kw => kw.term).join(', ')}.`;
+      reasoning += ` Additional primary keywords: ${keywords.slice(1).map(kw => kw.term).join(', ')}.`;
     }
 
     return reasoning;
@@ -374,7 +414,10 @@ export class KeywordInferenceEngine {
     let reasoning = `Identified ${keywords.length} secondary keywords. Top candidates: ${topKeywords.map(kw => kw.term).join(', ')}. `;
     
     reasoning += "These keywords appear in subheadings, meta descriptions, image alt texts, and content body. ";
-    reasoning += "They provide semantic support and long-tail opportunities for the primary keywords.";
+    reasoning += "They provide semantic support and long-tail opportunities for the primary keywords. ";
+    
+    // Add content-first approach explanation
+    reasoning += this.getContentFirstExplanation();
 
     return reasoning;
   }
@@ -741,7 +784,7 @@ export class KeywordInferenceEngine {
    * Extract contextual phrases using natural language understanding
    * Implements AI Overview optimization principles
    */
-  private extractContextualPhrases(mainTopic: string): string[] {
+  private extractContextualPhrases(_mainTopic: string): string[] {
     const phrases = new Set<string>();
     const content = this.structuredData.headings_and_keywords.map(h => h.text).join(' ');
     
@@ -1023,5 +1066,40 @@ export class KeywordInferenceEngine {
       'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them'
     ]);
     return stopWords.has(word);
+  }
+
+  /**
+   * Generate modern SEO philosophy explanation for primary keywords
+   */
+  private getModernSEOExplanation(keyword: KeywordAnalysis): string {
+    const isMultiWord = keyword.term.includes(' ');
+    const hasSemanticSignals = keyword.extracted_from?.includes('semantic_analysis') || 
+                              keyword.extracted_from?.includes('semantic_context');
+    
+    let explanation = "";
+    
+    if (isMultiWord) {
+      explanation += "This multi-word phrase aligns with modern semantic SEO practices, ";
+      explanation += "where Google prioritizes contextual understanding over exact keyword matching. ";
+    }
+    
+    if (hasSemanticSignals) {
+      explanation += "The semantic analysis approach identifies content-relevant terms that may have ";
+      explanation += "lower search volume but higher topical relevance and user intent alignment. ";
+    }
+    
+    explanation += "This content-first methodology focuses on optimizing for what your page actually covers ";
+    explanation += "rather than chasing high-volume, competitive keywords.";
+    
+    return explanation;
+  }
+
+  /**
+   * Generate content-first approach explanation for secondary keywords
+   */
+  private getContentFirstExplanation(): string {
+    return "This analysis prioritizes content optimization over search volume data, " +
+          "identifying semantically relevant terms that support your page's topical authority " +
+          "and help search engines understand your content's comprehensive coverage of the subject matter.";
   }
 }

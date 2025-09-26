@@ -4,7 +4,14 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { SEOAnalysisResult, GeminiAnalysis } from '@/types/seo-analysis';
+import { 
+  SEOAnalysisResult, 
+  GeminiAnalysis, 
+  OptimizedKeywordRecommendation, 
+  MetaDescriptionOptimization,
+  BERTContextAnalysis
+} from '@/types/seo-analysis';
+import { BERTKeywordOptimizer } from './bert-keyword-optimizer';
 
 export class AIAnalyzer {
   private genAI: GoogleGenerativeAI;
@@ -28,7 +35,17 @@ export class AIAnalyzer {
    */
   async analyzeSEO(analysisData: SEOAnalysisResult): Promise<GeminiAnalysis> {
     try {
-      const prompt = this.buildAdvancedPrompt(analysisData);
+      // Initialize BERT keyword optimizer
+      const bertOptimizer = new BERTKeywordOptimizer(analysisData);
+      
+      // Generate optimized keywords and meta description
+      const [optimizedKeywords, optimizedMetaDescription] = await Promise.all([
+        bertOptimizer.generateOptimizedKeywords(),
+        bertOptimizer.generateOptimizedMetaDescription()
+      ]);
+
+      // Build enhanced prompt with BERT analysis
+      const prompt = this.buildBERTEnhancedPrompt(analysisData, optimizedKeywords, optimizedMetaDescription);
       
       const result = await this.model.generateContent({
         contents: [{ 
@@ -48,7 +65,16 @@ export class AIAnalyzer {
         throw new Error('No text returned by Gemini');
       }
 
-      return this.parseGeminiResponse(text);
+      const geminiAnalysis = this.parseGeminiResponse(text);
+      
+      // Enhance with BERT analysis
+      return {
+        ...geminiAnalysis,
+        optimized_keywords: optimizedKeywords,
+        meta_description_optimization: optimizedMetaDescription,
+        bert_context_analysis: this.extractBERTAnalysis(analysisData),
+        search_intent_analysis: this.analyzeSearchIntent(analysisData)
+      };
     } catch (error) {
       console.error('AI Analyzer Error:', error);
       throw new Error('AI analysis is currently unavailable. Please try again later.');
@@ -117,6 +143,14 @@ ${JSON.stringify(data, null, 2)}
 4. Assess keyword distribution and semantic clustering
 5. Evaluate keyword relevance to user intent and topic depth
 
+**Modern SEO Approach:**
+Primary keywords are selected using a content-first methodology that prioritizes:
+- Multi-word phrases over single keywords (semantic SEO)
+- Content relevance over search volume data
+- Topical authority and entity relationships
+- Semantic understanding and contextual relevance
+- Long-tail opportunities that may have low volume but high intent alignment
+
 ### STEP 4: SECONDARY KEYWORD ANALYSIS (reasoning_secondary_keywords)
 **Thought Process:**
 1. Analyze semantic relationships and co-occurrence patterns
@@ -131,6 +165,14 @@ ${JSON.stringify(data, null, 2)}
 - Image alt text presence (20% weight)
 - Content frequency >2 occurrences (20% weight)
 - Semantic relevance to primary keywords (10% weight)
+
+**Content-First Philosophy:**
+This analysis prioritizes content optimization over search volume data. Keywords are selected based on:
+- What the page actually covers (content relevance)
+- Semantic relationships and topical authority
+- User intent alignment with page content
+- Long-tail opportunities that may have low search volume but high conversion potential
+- Modern SEO practices focusing on semantic understanding rather than exact keyword matching
 
 ### STEP 4: E-E-A-T ASSESSMENT (eeat_assessment)
 **Thought Process:**
@@ -217,7 +259,7 @@ Provide detailed analysis for each E-E-A-T component with:
 
 ## OUTPUT REQUIREMENTS
 
-Provide your complete analysis as a JSON object with this exact structure:
+Provide your complete analysis as a VALID JSON object with this exact structure. Ensure proper JSON formatting with no trailing commas, properly escaped quotes, and valid syntax:
 
 \`\`\`json
 {
@@ -232,6 +274,23 @@ Provide your complete analysis as a JSON object with this exact structure:
   "best_long_tail_keyword": "long-tail keyword phrase with highest semantic relevance to core topic"
 }
 \`\`\`
+
+**CRITICAL JSON REQUIREMENTS:**
+- Use double quotes for all strings
+- Escape any quotes within strings with backslashes
+- No trailing commas after the last property
+- Ensure all strings are properly closed
+- Use valid JSON syntax throughout
+
+**CONTENT FORMATTING REQUIREMENTS:**
+- Use clear headings for main sections (e.g., "Primary Keyword Analysis:", "SEO Recommendations:")
+- Use bullet points (•) for lists and recommendations
+- Use numbered lists (1., 2., 3.) for step-by-step instructions
+- Include key metrics in format "Metric: Value" (e.g., "Confidence Score: 95%")
+- Break content into logical paragraphs with clear spacing
+- Use professional, readable language suitable for SEO professionals
+- Avoid using backticks (\`) in content as they cause JSON parsing issues
+- Use proper line breaks (\n) for paragraph separation
 
 ## CRITICAL GUIDELINES
 - Be specific and actionable in all recommendations
@@ -373,6 +432,242 @@ Return ONLY the JSON object. No additional text or formatting.`;
   private sanitizeText(text: unknown): string {
     if (typeof text !== 'string') return '';
     return text.trim().substring(0, 2000); // Limit length
+  }
+
+  /**
+   * Build BERT-enhanced prompt with optimized keywords and meta description
+   */
+  private buildBERTEnhancedPrompt(
+    data: SEOAnalysisResult, 
+    optimizedKeywords: OptimizedKeywordRecommendation[], 
+    optimizedMetaDescription: MetaDescriptionOptimization
+  ): string {
+    return `# BERT-AWARE SEO ANALYSIS - ENHANCED WITH AI OVERVIEW OPTIMIZATION
+
+## ROLE & EXPERTISE
+You are a world-class SEO strategist specializing in BERT-aware optimization, AI Overview preparation, and modern search algorithm compliance. Your expertise includes:
+
+### CORE COMPETENCIES:
+- **BERT (Bidirectional Encoder Representations from Transformers)** optimization
+- **AI Overview** and **AI Mode** optimization strategies
+- **Answer Engine Optimization (AEO)** for featured snippets
+- **Google Entity Engine Optimization (GEO)** for local search
+- **Search Intent Analysis** with contextual understanding
+- **Semantic SEO** and topical authority assessment
+- **E-E-A-T** evaluation aligned with Google's quality guidelines
+
+## ANALYSIS DATA
+\`\`\`json
+${JSON.stringify(data, null, 2)}
+\`\`\`
+
+## BERT-OPTIMIZED KEYWORD RECOMMENDATIONS
+\`\`\`json
+${JSON.stringify(optimizedKeywords, null, 2)}
+\`\`\`
+
+## OPTIMIZED META DESCRIPTION ANALYSIS
+\`\`\`json
+${JSON.stringify(optimizedMetaDescription, null, 2)}
+\`\`\`
+
+## CHAIN OF THOUGHT ANALYSIS PROCESS
+
+### STEP 1: BERT CONTEXTUAL ANALYSIS
+**Thought Process:**
+1. Analyze the bidirectional coherence of the content
+2. Evaluate contextual relevance using BERT principles
+3. Assess natural language processing optimization
+4. Measure preposition importance (critical BERT insight)
+5. Calculate semantic density for topical authority
+
+### STEP 2: AI OVERVIEW OPTIMIZATION ASSESSMENT
+**Thought Process:**
+1. Evaluate content structure for AI Overview inclusion
+2. Assess answer-focused optimization potential
+3. Analyze conversational query handling
+4. Measure context richness for AI understanding
+5. Evaluate structured data potential
+
+### STEP 3: SEARCH INTENT & USER ALIGNMENT
+**Thought Process:**
+1. Analyze primary search intent (informational, navigational, transactional, commercial)
+2. Evaluate content alignment with user expectations
+3. Assess conversational query optimization
+4. Measure commercial intent signals
+5. Evaluate local search optimization potential
+
+## REQUIRED OUTPUT FORMAT
+
+Provide your analysis in the following JSON structure:
+
+\`\`\`json
+{
+  "reasoning_primary_keywords": "Detailed analysis of primary keyword strategy with BERT awareness...",
+  "reasoning_secondary_keywords": "Analysis of secondary keyword opportunities and semantic coverage...",
+  "seo_recommendations_latest_algorithms": "Comprehensive recommendations aligned with Google's September 2025 algorithms...",
+  "eeat_assessment": "Detailed E-E-A-T evaluation with specific improvement suggestions...",
+  "user_intent_alignment": "Analysis of search intent alignment and user satisfaction optimization...",
+  "ai_overview_optimization": "Specific recommendations for AI Overview and AI Mode optimization...",
+  "confidence_assessment": "Overall confidence in the analysis and recommendations..."
+}
+\`\`\`
+
+Provide actionable, data-driven recommendations that will improve search rankings and user satisfaction.`;
+  }
+
+  /**
+   * Extract BERT analysis from content
+   */
+  private extractBERTAnalysis(data: SEOAnalysisResult): BERTContextAnalysis {
+    const content = data.structured_on_page_data.headings_and_keywords
+      .map(h => h.text)
+      .join(' ');
+    
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    
+    return {
+      bidirectional_coherence: this.calculateBidirectionalCoherence(sentences),
+      contextual_relevance: this.calculateContextualRelevance(data),
+      natural_language_score: this.calculateNaturalLanguageScore(sentences),
+      preposition_importance: this.calculatePrepositionImportance(content),
+      semantic_density: this.calculateSemanticDensity(data)
+    };
+  }
+
+  /**
+   * Analyze search intent
+   */
+  private analyzeSearchIntent(data: SEOAnalysisResult): {
+    informational: number;
+    navigational: number;
+    transactional: number;
+    commercial: number;
+  } {
+    const title = data.page_metadata.title_tag.toLowerCase();
+    const headingsContent = data.structured_on_page_data.headings_and_keywords
+      .map(h => h.text)
+      .join(' ')
+      .toLowerCase();
+    const meta = (data.page_metadata.meta_description || '').toLowerCase();
+    const content = `${title} ${headingsContent} ${meta}`.trim();
+    
+    return {
+      informational: this.calculateIntentScore(title, content, 'informational'),
+      navigational: this.calculateIntentScore(title, content, 'navigational'),
+      transactional: this.calculateIntentScore(title, content, 'transactional'),
+      commercial: this.calculateIntentScore(title, content, 'commercial')
+    };
+  }
+
+  /**
+   * Calculate bidirectional coherence
+   */
+  private calculateBidirectionalCoherence(sentences: string[]): number {
+    if (sentences.length < 2) return 0.5;
+    
+    let coherenceScore = 0;
+    for (let i = 0; i < sentences.length - 1; i++) {
+      const current = sentences[i].toLowerCase();
+      const next = sentences[i + 1].toLowerCase();
+      
+      const sharedWords = this.findSharedWords(current, next);
+      coherenceScore += sharedWords / Math.max(current.split(' ').length, next.split(' ').length);
+    }
+    
+    return Math.min(1.0, coherenceScore / (sentences.length - 1));
+  }
+
+  /**
+   * Calculate contextual relevance
+   */
+  private calculateContextualRelevance(data: SEOAnalysisResult): number {
+    const coreTopic = data.semantic_analysis.core_topic_analysis.main_topic.topic.toLowerCase();
+    const title = data.page_metadata.title_tag.toLowerCase();
+    
+    const titleRelevance = coreTopic.split(' ').filter(word => 
+      title.includes(word) && word.length > 2
+    ).length / coreTopic.split(' ').length;
+    
+    return Math.min(1.0, titleRelevance);
+  }
+
+  /**
+   * Calculate natural language score
+   */
+  private calculateNaturalLanguageScore(sentences: string[]): number {
+    if (sentences.length === 0) return 0;
+    
+    let naturalScore = 0;
+    sentences.forEach(sentence => {
+      const words = sentence.split(' ');
+      const hasArticles = words.some(word => ['a', 'an', 'the'].includes(word.toLowerCase()));
+      const hasPrepositions = words.some(word => 
+        ['for', 'with', 'without', 'in', 'on', 'at', 'by', 'from', 'to', 'of', 'about'].includes(word.toLowerCase())
+      );
+      
+      naturalScore += (hasArticles ? 0.5 : 0) + (hasPrepositions ? 0.5 : 0);
+    });
+    
+    return Math.min(1.0, naturalScore / sentences.length);
+  }
+
+  /**
+   * Calculate preposition importance
+   */
+  private calculatePrepositionImportance(content: string): number {
+    const words = content.toLowerCase().split(/\s+/);
+    const prepositions = ['for', 'with', 'without', 'in', 'on', 'at', 'by', 'from', 'to', 'of', 'about'];
+    const prepositionCount = words.filter(word => prepositions.includes(word)).length;
+    
+    return Math.min(1.0, prepositionCount / (words.length * 0.15));
+  }
+
+  /**
+   * Calculate semantic density
+   */
+  private calculateSemanticDensity(data: SEOAnalysisResult): number {
+    const entities = data.semantic_analysis.entity_extraction;
+    const entityCount = Object.values(entities).flat().length;
+    const wordCount = data.structured_on_page_data.word_count;
+    
+    return Math.min(1.0, entityCount / (wordCount / 100));
+  }
+
+  /**
+   * Calculate intent score
+   */
+  private calculateIntentScore(title: string, content: string, intent: string): number {
+    const intentKeywords = {
+      informational: ['how', 'what', 'why', 'when', 'where', 'guide', 'tutorial', 'learn'],
+      navigational: ['official', 'website', 'home', 'login', 'contact'],
+      transactional: ['buy', 'purchase', 'order', 'shop', 'price', 'cost'],
+      commercial: ['best', 'top', 'review', 'compare', 'vs', 'versus']
+    };
+    
+    const keywords = intentKeywords[intent as keyof typeof intentKeywords];
+    const titleMatches = keywords.filter(keyword => title.includes(keyword)).length;
+    const contentMatches = keywords.filter(keyword => content.includes(keyword)).length;
+    const raw = (titleMatches * 0.6 + contentMatches * 0.4) / Math.max(1, keywords.length);
+    // Sensible floor to avoid all-zeros when editorial content exists
+    const hasEditorialSignals = /\b(dating|tips|guide|how to|what is|review|best|top)\b/.test(content);
+    const floored = Math.max(hasEditorialSignals ? 0.1 : 0, raw);
+    return Math.min(1.0, floored);
+  }
+
+  /**
+   * Find shared words between two sentences
+   */
+  private findSharedWords(sentence1: string, sentence2: string): number {
+    const words1 = new Set(sentence1.split(' ').filter(w => w.length > 2));
+    const words2 = new Set(sentence2.split(' ').filter(w => w.length > 2));
+    
+    let shared = 0;
+    for (const word of words1) {
+      if (words2.has(word)) shared++;
+    }
+    
+    return shared;
   }
 
   /**

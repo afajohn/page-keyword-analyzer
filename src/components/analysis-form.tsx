@@ -110,6 +110,23 @@ export const AnalysisForm = ({ onAnalysisComplete, isLoading, onStartLoading }: 
               Include AI-powered analysis (requires Gemini API key)
             </label>
           </div>
+          
+          {includeAI && (
+            <div className="mt-2 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800 mb-1">API Key Required</p>
+                  <p className="text-xs text-blue-700">
+                    To enable AI analysis, add your Gemini API key to the environment variables. 
+                    Create a <code className="bg-blue-100 px-1 rounded">.env.local</code> file with: 
+                    <code className="bg-blue-100 px-1 rounded block mt-1">GEMINI_API_KEY=your_api_key_here</code>
+                    Get your API key from: <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline">Google AI Studio</a>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <Button 
             type="submit" 

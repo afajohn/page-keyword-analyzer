@@ -10,7 +10,8 @@ import {
   HeadingWithKeywords, 
   ImageAltText, 
   UrlAnalysis, 
-  MetaDataAnalysis 
+  MetaDataAnalysis,
+  MetaKeywordsInfo
 } from '@/types/seo-analysis';
 
 type CheerioRoot = ReturnType<typeof load>;
@@ -132,12 +133,10 @@ export class HTMLParser {
 
     // Extract keywords from meta description
     const descriptionKeywords = this.extractKeywordsFromText(metaDescription);
-    const metaKeywords = metaKeywordsContent
-      ? metaKeywordsContent
-          .split(',')
-          .map(k => k.trim().toLowerCase())
-          .filter(k => k.length > 1)
-      : [];
+    
+    // Enhanced meta keywords analysis
+    const metaKeywordsAnalysis = this.analyzeMetaKeywords(metaKeywordsContent);
+    const metaKeywords = metaKeywordsAnalysis.keywords;
 
     // Extract image alt texts from main content areas
     const imageAltTexts: ImageAltText[] = [];
@@ -182,7 +181,43 @@ export class HTMLParser {
       image_alt_texts: imageAltTexts,
       canonical_url: canonicalUrl,
       robots_meta: robotsMeta,
-      meta_keywords: metaKeywords
+      meta_keywords: metaKeywords,
+      meta_keywords_analysis: metaKeywordsAnalysis
+    };
+  }
+
+  /**
+   * Analyze meta keywords tag with enhanced detection
+   */
+  private analyzeMetaKeywords(rawContent: string): MetaKeywordsInfo {
+    if (!rawContent || rawContent.trim().length === 0) {
+      return {
+        has_meta_keywords: false,
+        keywords: [],
+        keyword_count: 0
+      };
+    }
+
+    // Parse keywords from content
+    const keywords = rawContent
+      .split(/[,;|]/) // Split by comma, semicolon, or pipe
+      .map(k => k.trim().toLowerCase())
+      .filter(k => k.length > 0)
+      .filter(k => !this.isStopWord(k))
+      .filter(k => k.length > 1);
+
+    // Remove duplicates
+    const uniqueKeywords = [...new Set(keywords)];
+
+    // Generate warning about meta keywords being deprecated
+    const warning = "Meta keywords are deprecated by Google and most search engines. Focus on content quality and other SEO factors instead.";
+
+    return {
+      has_meta_keywords: true,
+      keywords: uniqueKeywords,
+      keyword_count: uniqueKeywords.length,
+      raw_content: rawContent,
+      warning: uniqueKeywords.length > 0 ? warning : undefined
     };
   }
 

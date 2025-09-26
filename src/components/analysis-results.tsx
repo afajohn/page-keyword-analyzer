@@ -32,7 +32,180 @@ interface AnalysisResultsProps {
 
 export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
   const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'keywords' | 'eeat-analysis' | 'query-fanout' | 'ai-analysis' | 'technical'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'keywords' | 'eeat-analysis' | 'ai-analysis' | 'technical' | 'query-fanout'>('overview')
+
+  /**
+   * Format AI analysis text for better readability
+   */
+  const formatAnalysisText = (text: string): React.ReactElement => {
+    if (!text) return <></>
+
+    // First, convert \n to actual newlines and clean up the text
+    const cleanedText = text
+      .replace(/\\n/g, '\n')
+      .replace(/\\"/g, '"')
+      .replace(/\\`/g, '`')
+      .trim()
+
+    // Split text into paragraphs
+    const paragraphs = cleanedText.split(/\n\s*\n/).filter(p => p.trim())
+    
+    return (
+      <div className="space-y-4">
+        {paragraphs.map((paragraph, index) => {
+          const trimmed = paragraph.trim()
+          
+          // Check if it's a heading (starts with specific patterns)
+          if (trimmed.match(/^(Primary|Secondary|SEO|E-E-A-T|User Intent|AI Overview|Confidence|Recommendations?|Analysis|Assessment)/i)) {
+            return (
+              <div key={index} className="border-b border-blue-200 pb-2 mb-3">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">{trimmed}</h3>
+              </div>
+            )
+          }
+          
+          // Check if it contains bullet points or lists
+          if (trimmed.includes('•') || trimmed.includes('-') || trimmed.includes('*')) {
+            const lines = trimmed.split(/\n/)
+            const listItems = lines.filter(line => line.trim().match(/^[•\-\*]\s/))
+            const nonListItems = lines.filter(line => !line.trim().match(/^[•\-\*]\s/))
+            
+            return (
+              <div key={index} className="space-y-2">
+                {nonListItems.map((line, lineIndex) => (
+                  <p key={lineIndex} className="text-gray-700 leading-relaxed">
+                    {formatInlineText(line.trim())}
+                  </p>
+                ))}
+                {listItems.length > 0 && (
+                  <ul className="list-disc list-inside space-y-1 ml-4">
+                    {listItems.map((item, itemIndex) => (
+                      <li key={itemIndex} className="text-gray-700 leading-relaxed">
+                        {formatInlineText(item.replace(/^[•\-\*]\s/, ''))}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )
+          }
+          
+          // Check if it contains numbered lists
+          if (trimmed.match(/^\d+\./)) {
+            const lines = trimmed.split(/\n/)
+            const numberedItems = lines.filter(line => line.trim().match(/^\d+\./))
+            const nonNumberedItems = lines.filter(line => !line.trim().match(/^\d+\./))
+            
+            return (
+              <div key={index} className="space-y-2">
+                {nonNumberedItems.map((line, lineIndex) => (
+                  <p key={lineIndex} className="text-gray-700 leading-relaxed">
+                    {formatInlineText(line.trim())}
+                  </p>
+                ))}
+                {numberedItems.length > 0 && (
+                  <ol className="list-decimal list-inside space-y-1 ml-4">
+                    {numberedItems.map((item, itemIndex) => (
+                      <li key={itemIndex} className="text-gray-700 leading-relaxed">
+                        {formatInlineText(item.replace(/^\d+\.\s/, ''))}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            )
+          }
+          
+          // Check if it contains key-value pairs (like "Confidence: 100%")
+          if (trimmed.includes(':') && trimmed.split(':').length === 2) {
+            const [key, value] = trimmed.split(':')
+            return (
+              <div key={index} className="bg-white p-3 rounded border-l-2 border-blue-300">
+                <div className="flex">
+                  <span className="font-semibold text-blue-900 min-w-0 flex-shrink-0 mr-2">
+                    {key.trim()}:
+                  </span>
+                  <span className="text-gray-700">{formatInlineText(value.trim())}</span>
+                </div>
+              </div>
+            )
+          }
+          
+          // Regular paragraph - check if it contains markdown formatting
+          const lines = trimmed.split(/\n/)
+          if (lines.length > 1) {
+            return (
+              <div key={index} className="space-y-2">
+                {lines.map((line, lineIndex) => (
+                  <p key={lineIndex} className="text-gray-700 leading-relaxed">
+                    {formatInlineText(line.trim())}
+                  </p>
+                ))}
+              </div>
+            )
+          }
+          
+          // Single line paragraph
+          return (
+            <p key={index} className="text-gray-700 leading-relaxed">
+              {formatInlineText(trimmed)}
+            </p>
+          )
+        })}
+      </div>
+    )
+  }
+
+  /**
+   * Format inline text with markdown-like elements
+   */
+  const formatInlineText = (text: string): React.ReactElement => {
+    if (!text) return <></>
+
+    // Split by **bold** patterns
+    const parts = text.split(/(\*\*[^*]+\*\*)/)
+    
+    return (
+      <>
+        {parts.map((part, index) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            // Bold text
+            return (
+              <strong key={index} className="font-semibold text-gray-900 break-words">
+                {part.slice(2, -2)}
+              </strong>
+            )
+          } else if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+            // Italic text
+            return (
+              <em key={index} className="italic text-gray-800 break-words">
+                {part.slice(1, -1)}
+              </em>
+            )
+          } else if (part.includes('`')) {
+            // Handle inline code
+            const codeParts = part.split(/(`[^`]+`)/)
+            return (
+              <span key={index} className="break-words">
+                {codeParts.map((codePart, codeIndex) => {
+                  if (codePart.startsWith('`') && codePart.endsWith('`')) {
+                    return (
+                      <code key={codeIndex} className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono text-gray-800 break-all">
+                        {codePart.slice(1, -1)}
+                      </code>
+                    )
+                  }
+                  return <span key={codeIndex} className="break-words">{codePart}</span>
+                })}
+              </span>
+            )
+          } else {
+            return <span key={index} className="break-words">{part}</span>
+          }
+        })}
+      </>
+    )
+  }
 
   const handleCopyResults = async () => {
     try {
@@ -122,13 +295,12 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
     { id: 'overview', label: 'Overview', icon: TrendingUp },
     { id: 'keywords', label: 'Keywords', icon: Target },
     { id: 'eeat-analysis', label: 'E-E-A-T', icon: Users },
-    { id: 'query-fanout', label: 'Query Fan-Out', icon: Zap },
     { id: 'ai-analysis', label: 'AI Analysis', icon: Brain },
     { id: 'technical', label: 'Technical', icon: FileText }
   ]
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="w-full max-w-6xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
       {/* Header */}
       <Card>
         <CardHeader>
@@ -255,6 +427,27 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <div className={`h-5 w-5 ${result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.has_meta_keywords ? 'text-yellow-600' : 'text-green-600'}`}>
+                  {result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.has_meta_keywords ? '⚠️' : '✅'}
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">
+                    {result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.has_meta_keywords ? 'Yes' : 'No'}
+                  </div>
+                  <div className="text-sm text-gray-600">Meta Keywords</div>
+                  {result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.has_meta_keywords && (
+                    <div className="text-xs text-yellow-600 mt-1">
+                      {result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.keyword_count} found
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -282,6 +475,19 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                   <strong>Reasoning:</strong> {result.inferred_keywords.primary.reasoning_summary}
                 </p>
               </div>
+              <div className="mt-3 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
+                <div className="flex items-start gap-2">
+                  <Brain className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-green-800 mb-1">Content-First SEO Approach</p>
+                    <p className="text-xs text-green-700">
+                      Keywords are selected based on what your page actually covers, prioritizing semantic relevance 
+                      and topical authority over search volume data. This modern approach aligns with Google&apos;s 
+                      shift toward contextual understanding and user intent matching.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -306,6 +512,19 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                 <p className="text-sm text-green-800">
                   <strong>Reasoning:</strong> {result.inferred_keywords.secondary.reasoning_summary}
                 </p>
+              </div>
+              <div className="mt-3 p-3 bg-purple-50 rounded-lg border-l-4 border-purple-400">
+                <div className="flex items-start gap-2">
+                  <Zap className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-purple-800 mb-1">Semantic Support Strategy</p>
+                    <p className="text-xs text-purple-700">
+                      Secondary keywords provide semantic support and long-tail opportunities. They may have 
+                      lower search volume but higher conversion potential by targeting specific user intents 
+                      and supporting your page&apos;s comprehensive topical coverage.
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -381,9 +600,11 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="prose prose-sm max-w-none">
-                  <div className="whitespace-pre-line text-white-500 leading-relaxed">
-                    {result.gemini_analysis.eeat_assessment}
+                <div className="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-400">
+                  <div className="prose prose-sm max-w-none break-words overflow-hidden">
+                    <div className="text-gray-800 leading-relaxed break-words whitespace-normal">
+                      {formatAnalysisText(result.gemini_analysis.eeat_assessment || '')}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -480,51 +701,469 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
           {!result.gemini_analysis.reasoning_primary_keywords ? (
             <Card>
               <CardHeader>
-                <CardTitle>AI analysis is currently unavailable</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-gray-400" />
+                  AI Analysis Unavailable
+                </CardTitle>
                 <CardDescription>
                   No Gemini output was returned. Ensure a valid API key is configured or try again later.
                 </CardDescription>
               </CardHeader>
             </Card>
           ) : (
-            <></>
+            <>
+              {/* Primary Keywords Analysis */}
+              {result.gemini_analysis.reasoning_primary_keywords && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-blue-600" />
+                      Primary Keywords Analysis
+                    </CardTitle>
+                    <CardDescription>
+                      AI-powered analysis of primary keyword identification and strategy
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+                      <div className="prose prose-sm max-w-none break-words overflow-hidden">
+                        <div className="text-gray-800 leading-relaxed break-words whitespace-normal">
+                          {formatAnalysisText(result.gemini_analysis.reasoning_primary_keywords || '')}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Secondary Keywords Analysis */}
+              {result.gemini_analysis.reasoning_secondary_keywords && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-green-600" />
+                      Secondary Keywords Analysis
+                    </CardTitle>
+                    <CardDescription>
+                      AI-powered analysis of secondary keyword strategy and opportunities
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
+                      <div className="prose prose-sm max-w-none break-words overflow-hidden">
+                        <div className="text-gray-800 leading-relaxed break-words whitespace-normal">
+                          {formatAnalysisText(result.gemini_analysis.reasoning_secondary_keywords || '')}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* SEO Recommendations */}
+              {result.gemini_analysis.seo_recommendations_latest_algorithms && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="h-5 w-5 text-purple-600" />
+                      SEO Recommendations
+                    </CardTitle>
+                    <CardDescription>
+                      Strategic recommendations based on latest Google algorithms
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-400">
+                      <div className="prose prose-sm max-w-none break-words overflow-hidden">
+                        <div className="text-gray-800 leading-relaxed break-words whitespace-normal">
+                          {formatAnalysisText(result.gemini_analysis.seo_recommendations_latest_algorithms || '')}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* E-E-A-T Assessment */}
+              {result.gemini_analysis.eeat_assessment && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-indigo-600" />
+                      E-E-A-T Assessment
+                    </CardTitle>
+                    <CardDescription>
+                      Expertise, Experience, Authoritativeness, and Trustworthiness analysis
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-400">
+                      <div className="prose prose-sm max-w-none break-words overflow-hidden">
+                        <div className="text-gray-800 leading-relaxed break-words whitespace-normal">
+                          {formatAnalysisText(result.gemini_analysis.eeat_assessment || '')}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* User Intent Alignment */}
+              {result.gemini_analysis.user_intent_alignment && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-yellow-600" />
+                      User Intent Alignment
+                    </CardTitle>
+                    <CardDescription>
+                      Analysis of how well content matches user search intent
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400">
+                      <div className="prose prose-sm max-w-none break-words overflow-hidden">
+                        <div className="text-gray-800 leading-relaxed break-words whitespace-normal">
+                          {formatAnalysisText(result.gemini_analysis.user_intent_alignment || '')}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* AI Overview Optimization */}
+              {result.gemini_analysis.ai_overview_optimization && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-orange-600" />
+                      AI Overview Optimization
+                    </CardTitle>
+                    <CardDescription>
+                      Recommendations for optimizing content for AI-powered search results
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-400">
+                      <div className="prose prose-sm max-w-none break-words overflow-hidden">
+                        <div className="text-gray-800 leading-relaxed break-words whitespace-normal">
+                          {formatAnalysisText(result.gemini_analysis.ai_overview_optimization || '')}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Confidence Assessment */}
+              {result.gemini_analysis.confidence_assessment && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      Confidence Assessment
+                    </CardTitle>
+                    <CardDescription>
+                      Overall assessment of analysis quality and reliability
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
+                      <div className="prose prose-sm max-w-none break-words overflow-hidden">
+                        <div className="text-gray-800 leading-relaxed break-words whitespace-normal">
+                          {formatAnalysisText(result.gemini_analysis.confidence_assessment || '')}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* BERT Optimization tab removed */}
+      {false && (
+        <div className="space-y-6">
+          {/* BERT Context Analysis */}
+          {result.gemini_analysis.bert_context_analysis && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-purple-600" />
+                  BERT Context Analysis
+                </CardTitle>
+                <CardDescription>
+                  Analysis based on BERT&apos;s bidirectional understanding principles
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-600">Bidirectional Coherence</div>
+                    <div className="text-2xl font-bold text-purple-600">0%</div>
+                    <div className="text-xs text-gray-500">Content flow in both directions</div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-600">Contextual Relevance</div>
+                    <div className="text-2xl font-bold text-blue-600">0%</div>
+                    <div className="text-xs text-gray-500">Topic alignment and relevance</div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-600">Natural Language Score</div>
+                    <div className="text-2xl font-bold text-green-600">0%</div>
+                    <div className="text-xs text-gray-500">Conversational optimization</div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-600">Preposition Importance</div>
+                    <div className="text-2xl font-bold text-orange-600">0%</div>
+                    <div className="text-xs text-gray-500">Context-providing prepositions</div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-600">Semantic Density</div>
+                    <div className="text-2xl font-bold text-indigo-600">0%</div>
+                    <div className="text-xs text-gray-500">Information richness</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {result.gemini_analysis.reasoning_primary_keywords && (
-            <>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-purple-600" />
-                    AI-Powered SEO Recommendations
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose max-w-none">
-                    <div className="whitespace-pre-line text-sm leading-relaxed text-white">
-                      {result.gemini_analysis.seo_recommendations_latest_algorithms}
+          {/* Optimized Keywords (disabled) */}
+          {false && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-blue-600" />
+                  BERT-Optimized Keywords
+                </CardTitle>
+                <CardDescription>
+                  High-potential keywords with search volume analysis and BERT context scoring
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {(result.gemini_analysis.optimized_keywords || []).slice(0, 10).map((keyword, index) => (
+                    <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
+                            {keyword.keyword_type}
+                          </span>
+                          <span className="font-semibold text-lg text-black">{keyword.keyword}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-green-600">
+                            {keyword.search_volume_potential.estimated_monthly_searches.toLocaleString()}
+                          </div>
+                          <div className="text-xs text-gray-500">monthly searches</div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                        <div>
+                          <div className="text-sm text-gray-600">Competition</div>
+                          <div className={`font-medium ${
+                            keyword.search_volume_potential.competition_level === 'low' ? 'text-green-600' :
+                            keyword.search_volume_potential.competition_level === 'medium' ? 'text-yellow-600' :
+                            'text-red-600'
+                          }`}>
+                            {keyword.search_volume_potential.competition_level}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">BERT Score</div>
+                          <div className="font-medium text-purple-600">
+                            {Math.round(keyword.bert_context_score.contextual_relevance * 100)}%
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">Confidence</div>
+                          <div className="font-medium text-blue-600">
+                            {Math.round(keyword.confidence_score * 100)}%
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-600">Current Usage</div>
+                          <div className="font-medium text-gray-700">
+                            {keyword.current_performance.frequency}x
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mb-3">
+                        <div className="text-sm text-gray-600 mb-1">Current Performance:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {keyword.current_performance.found_in_title && (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Title</span>
+                          )}
+                          {keyword.current_performance.found_in_h1 && (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">H1</span>
+                          )}
+                          {keyword.current_performance.found_in_meta_description && (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Meta</span>
+                          )}
+                          {keyword.current_performance.found_in_content && (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Content</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-sm text-gray-700 mb-2">{keyword.reasoning}</div>
+                      
+                      {keyword.optimization_recommendations.length > 0 && (
+                        <div>
+                          <div className="text-sm font-medium text-gray-600 mb-1">Recommendations:</div>
+                          <ul className="text-sm text-gray-700 space-y-1">
+                            {keyword.optimization_recommendations.map((rec, recIndex) => (
+                              <li key={recIndex} className="flex items-start gap-2">
+                                <span className="text-blue-500 mt-1">•</span>
+                                <span>{rec}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Meta Description Optimization */}
+          {result.gemini_analysis.meta_description_optimization && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-green-600" />
+                  Meta Description Optimization
+                </CardTitle>
+                <CardDescription>
+                  AEO, GEO, and AI Overview optimized meta description
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">Current Description:</div>
+                    <div className="p-3 bg-gray-50 rounded border text-sm text-black">
+                      {result.gemini_analysis.meta_description_optimization?.current_description || ''}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
 
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-yellow-600" />
-                    AI Overview Optimization
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose max-w-none">
-                    <div className="whitespace-pre-line text-sm leading-relaxed text-white">
-                      {result.gemini_analysis.ai_overview_optimization}
+                  <div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">Optimized Description:</div>
+                    <div className="p-3 bg-green-50 rounded border text-sm text-black">
+                      {result.gemini_analysis.meta_description_optimization?.optimized_description || ''}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-600">Optimization Score</div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {Math.round((result.gemini_analysis.meta_description_optimization?.optimization_score || 0) * 100)}%
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-600">AEO Ready</div>
+                      <div className="flex gap-2">
+                        {result.gemini_analysis.meta_description_optimization?.aeo_optimization?.answer_focused && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">Answer-focused</span>
+                        )}
+                        {result.gemini_analysis.meta_description_optimization?.aeo_optimization?.featured_snippet_ready && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">Snippet-ready</span>
+                        )}
+                        {result.gemini_analysis.meta_description_optimization?.aeo_optimization?.conversational_tone && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">Conversational</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-600">AI Overview Ready</div>
+                      <div className="flex gap-2">
+                        {result.gemini_analysis.meta_description_optimization?.ai_overview_optimization?.structured_for_ai && (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">Structured</span>
+                        )}
+                        {result.gemini_analysis.meta_description_optimization?.ai_overview_optimization?.context_rich && (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">Context-rich</span>
+                        )}
+                        {result.gemini_analysis.meta_description_optimization?.ai_overview_optimization?.intent_aligned && (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">Intent-aligned</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-sm font-medium text-gray-600 mb-2">Reasoning:</div>
+                    <div className="text-sm text-gray-700 text-white">
+                      {result.gemini_analysis.meta_description_optimization?.reasoning || ''}
+                    </div>
+                  </div>
+
+                  {((result.gemini_analysis.meta_description_optimization?.improvements || []).length > 0) && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-600 mb-2">Improvements:</div>
+                      <ul className="text-sm text-gray-700 space-y-1 text-white">
+                        {(result.gemini_analysis.meta_description_optimization?.improvements || []).map((improvement, index) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <span className="text-green-500 mt-1">•</span>
+                            <span>{improvement}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Search Intent Analysis */}
+          {result.gemini_analysis.search_intent_analysis && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-indigo-600" />
+                  Search Intent Analysis
+                </CardTitle>
+                <CardDescription>
+                  BERT-aware analysis of user search intent
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-600">Informational</div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {Math.round(((result.gemini_analysis.search_intent_analysis?.informational) || 0) * 100)}%
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-600">Navigational</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {Math.round(((result.gemini_analysis.search_intent_analysis?.navigational) || 0) * 100)}%
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-600">Transactional</div>
+                    <div className="text-2xl font-bold text-orange-600">
+                      {Math.round(((result.gemini_analysis.search_intent_analysis?.transactional) || 0) * 100)}%
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-600">Commercial</div>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {Math.round(((result.gemini_analysis.search_intent_analysis?.commercial) || 0) * 100)}%
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       )}
@@ -541,6 +1180,57 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                 <div><strong>Title:</strong> {result.page_metadata.title_tag}</div>
                 <div><strong>Meta Description:</strong> {truncateText(result.page_metadata.meta_description, 100)}</div>
                 <div><strong>Language:</strong> {result.page_metadata.language}</div>
+                
+                {/* Meta Keywords Analysis */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <strong>Meta Keywords:</strong>
+                    {result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.has_meta_keywords ? (
+                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
+                        Found ({result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.keyword_count} keywords)
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+                        Not Found
+                      </span>
+                    )}
+                  </div>
+                  
+                  {result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.has_meta_keywords && (
+                    <div className="space-y-2">
+                      {result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.warning && (
+                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                          <div className="flex items-start gap-2">
+                            <div className="text-yellow-600">⚠️</div>
+                            <div className="text-sm text-yellow-800">
+                              {result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.warning}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.raw_content && (
+                        <div>
+                          <div className="text-sm text-gray-600 mb-1">Raw Content:</div>
+                          <div className="text-sm bg-gray-50 p-2 rounded border font-mono text-black">
+                            {result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.raw_content}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div>
+                        <div className="text-sm text-gray-600 mb-1">Extracted Keywords:</div>
+                        <div className="flex flex-wrap gap-1">
+                          {result.structured_on_page_data.meta_data_analysis.meta_keywords_analysis.keywords.map((keyword, index) => (
+                            <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                              {keyword}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -596,3 +1286,4 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
     </div>
   )
 }
+
