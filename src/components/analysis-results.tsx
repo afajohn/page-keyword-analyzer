@@ -32,7 +32,7 @@ interface AnalysisResultsProps {
 
 export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
   const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'keywords' | 'eeat-analysis' | 'ai-analysis' | 'technical' | 'query-fanout'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'eeat-analysis' | 'ai-analysis' | 'technical' | 'query-fanout'>('overview')
 
   /**
    * Format AI analysis text for better readability
@@ -293,7 +293,6 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: TrendingUp },
-    { id: 'keywords', label: 'Keywords', icon: Target },
     { id: 'eeat-analysis', label: 'E-E-A-T', icon: Users },
     { id: 'ai-analysis', label: 'AI Analysis', icon: Brain },
     { id: 'technical', label: 'Technical', icon: FileText }
@@ -339,7 +338,7 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as 'overview' | 'keywords' | 'eeat-analysis' | 'query-fanout' | 'ai-analysis' | 'technical')}
+              onClick={() => setActiveTab(tab.id as 'overview' | 'eeat-analysis' | 'query-fanout' | 'ai-analysis' | 'technical')}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'bg-white text-gray-900 shadow-sm'
@@ -451,85 +450,6 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
         </div>
       )}
 
-      {activeTab === 'keywords' && (
-        <div className="space-y-6">
-          {/* Primary Keywords */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-blue-600" />
-                Primary Keywords
-              </CardTitle>
-              <CardDescription>
-                Confidence: {formatConfidenceScore(result.inferred_keywords.primary.confidence_score)}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {result.inferred_keywords.primary.keywords.map((keyword, index) => (
-                  <KeywordCard key={index} keyword={keyword} />
-                ))}
-              </div>
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Reasoning:</strong> {result.inferred_keywords.primary.reasoning_summary}
-                </p>
-              </div>
-              <div className="mt-3 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
-                <div className="flex items-start gap-2">
-                  <Brain className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-green-800 mb-1">Content-First SEO Approach</p>
-                    <p className="text-xs text-green-700">
-                      Keywords are selected based on what your page actually covers, prioritizing semantic relevance 
-                      and topical authority over search volume data. This modern approach aligns with Google&apos;s 
-                      shift toward contextual understanding and user intent matching.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Secondary Keywords */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-green-600" />
-                Secondary Keywords
-              </CardTitle>
-              <CardDescription>
-                Confidence: {formatConfidenceScore(result.inferred_keywords.secondary.confidence_score)}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {result.inferred_keywords.secondary.keywords.slice(0, 12).map((keyword, index) => (
-                  <KeywordCard key={index} keyword={keyword} />
-                ))}
-              </div>
-              <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                <p className="text-sm text-green-800">
-                  <strong>Reasoning:</strong> {result.inferred_keywords.secondary.reasoning_summary}
-                </p>
-              </div>
-              <div className="mt-3 p-3 bg-purple-50 rounded-lg border-l-4 border-purple-400">
-                <div className="flex items-start gap-2">
-                  <Zap className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-purple-800 mb-1">Semantic Support Strategy</p>
-                    <p className="text-xs text-purple-700">
-                      Secondary keywords provide semantic support and long-tail opportunities. They may have 
-                      lower search volume but higher conversion potential by targeting specific user intents 
-                      and supporting your page&apos;s comprehensive topical coverage.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {activeTab === 'eeat-analysis' && (
         <div className="space-y-6">
