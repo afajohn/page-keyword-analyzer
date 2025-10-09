@@ -649,17 +649,23 @@ Return ONLY the JSON object.`;
           internal_link_strength: typeof parsed.internal_link_strength === 'number' ? parsed.internal_link_strength : 50,
           backlink_opportunity_score: typeof parsed.backlink_opportunity_score === 'number' ? parsed.backlink_opportunity_score : 50,
           page_authority_recommendations: Array.isArray(parsed.page_authority_recommendations) ? 
-            parsed.page_authority_recommendations.map((rec: any) => ({
-              type: rec.type as AuthorityRecommendation['type'],
-              priority: rec.priority as AuthorityRecommendation['priority'],
-              description: rec.description
-            })) : [],
+            parsed.page_authority_recommendations.map((rec: unknown) => {
+              const recommendation = rec as { type: string; priority: string; description: string };
+              return {
+                type: recommendation.type as AuthorityRecommendation['type'],
+                priority: recommendation.priority as AuthorityRecommendation['priority'],
+                description: recommendation.description
+              };
+            }) : [],
           domain_authority_recommendations: Array.isArray(parsed.domain_authority_recommendations) ? 
-            parsed.domain_authority_recommendations.map((rec: any) => ({
-              type: rec.type as AuthorityRecommendation['type'],
-              priority: rec.priority as AuthorityRecommendation['priority'],
-              description: rec.description
-            })) : []
+            parsed.domain_authority_recommendations.map((rec: unknown) => {
+              const recommendation = rec as { type: string; priority: string; description: string };
+              return {
+                type: recommendation.type as AuthorityRecommendation['type'],
+                priority: recommendation.priority as AuthorityRecommendation['priority'],
+                description: recommendation.description
+              };
+            }) : []
         };
       }
       

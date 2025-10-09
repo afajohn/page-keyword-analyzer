@@ -9,7 +9,9 @@ import {
   GeminiAnalysis, 
   OptimizedKeywordRecommendation, 
   MetaDescriptionOptimization,
-  BERTContextAnalysis
+  BERTContextAnalysis,
+  AuthorityAnalysis,
+  AuthorityRecommendation
 } from '@/types/seo-analysis';
 import { BERTKeywordOptimizer } from './bert-keyword-optimizer';
 
@@ -958,14 +960,7 @@ Generate the content now:`;
    * NEW FEATURE: Generate Domain/Page Authority Analysis
    * Authority Enhancement Implementation
    */
-  private async generateAuthorityAnalysis(analysisData: SEOAnalysisResult): Promise<{
-    summary: string;
-    page_authority_recommendations: Array<{ type: string; priority: string; description: string }>;
-    domain_authority_recommendations: Array<{ type: string; priority: string; description: string }>;
-    content_linkability_score: number;
-    internal_link_strength: number;
-    backlink_opportunity_score: number;
-  }> {
+  private async generateAuthorityAnalysis(analysisData: SEOAnalysisResult): Promise<AuthorityAnalysis> {
     console.log('📝 Building Authority Analysis prompt...');
     const prompt = this.buildAuthorityAnalysisPrompt(analysisData);
     console.log('📝 Prompt built successfully, length:', prompt.length);
@@ -1109,14 +1104,7 @@ Generate the analysis now:`;
   /**
    * Parse Authority Analysis response
    */
-  private parseAuthorityAnalysisResponse(response: string): {
-    summary: string;
-    page_authority_recommendations: Array<{ type: string; priority: string; description: string }>;
-    domain_authority_recommendations: Array<{ type: string; priority: string; description: string }>;
-    content_linkability_score: number;
-    internal_link_strength: number;
-    backlink_opportunity_score: number;
-  } {
+  private parseAuthorityAnalysisResponse(response: string): AuthorityAnalysis {
     try {
       const cleanedResponse = response.trim();
       const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
@@ -1129,8 +1117,24 @@ Generate the analysis now:`;
           content_linkability_score: typeof parsed.content_linkability_score === 'number' ? parsed.content_linkability_score : 50,
           internal_link_strength: typeof parsed.internal_link_strength === 'number' ? parsed.internal_link_strength : 50,
           backlink_opportunity_score: typeof parsed.backlink_opportunity_score === 'number' ? parsed.backlink_opportunity_score : 50,
-          page_authority_recommendations: Array.isArray(parsed.page_authority_recommendations) ? parsed.page_authority_recommendations : [],
-          domain_authority_recommendations: Array.isArray(parsed.domain_authority_recommendations) ? parsed.domain_authority_recommendations : []
+          page_authority_recommendations: Array.isArray(parsed.page_authority_recommendations) ? 
+            parsed.page_authority_recommendations.map((rec: unknown) => {
+              const recommendation = rec as { type: string; priority: string; description: string };
+              return {
+                type: recommendation.type as AuthorityRecommendation['type'],
+                priority: recommendation.priority as AuthorityRecommendation['priority'],
+                description: recommendation.description
+              };
+            }) : [],
+          domain_authority_recommendations: Array.isArray(parsed.domain_authority_recommendations) ? 
+            parsed.domain_authority_recommendations.map((rec: unknown) => {
+              const recommendation = rec as { type: string; priority: string; description: string };
+              return {
+                type: recommendation.type as AuthorityRecommendation['type'],
+                priority: recommendation.priority as AuthorityRecommendation['priority'],
+                description: recommendation.description
+              };
+            }) : []
         };
       }
       

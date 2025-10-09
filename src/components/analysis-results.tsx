@@ -1199,9 +1199,9 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                         </p>
                         <ol className="text-sm text-green-800 space-y-1 list-decimal list-inside">
                           <li>Copy the JSON-LD code above</li>
-                          <li>Paste it inside a <code className="bg-green-100 px-1 rounded">&lt;script type="application/ld+json"&gt;</code> tag</li>
+                          <li>Paste it inside a <code className="bg-green-100 px-1 rounded">&lt;script type=&quot;application/ld+json&quot;&gt;</code> tag</li>
                           <li>Place the script tag in the <code className="bg-green-100 px-1 rounded">&lt;head&gt;</code> section of your HTML</li>
-                          <li>Test using Google's <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener noreferrer" className="underline font-medium">Rich Results Test</a></li>
+                          <li>Test using Google&apos;s <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener noreferrer" className="underline font-medium">Rich Results Test</a></li>
                         </ol>
                       </div>
                     </div>
@@ -1246,7 +1246,7 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                       </div>
                       <div className="p-3 bg-purple-50 rounded-lg">
                         <p className="text-sm text-purple-900">
-                          <strong>Where to add:</strong> Insert this content in the "About the Author" section, case study introduction, or as a credibility statement near the top of your article.
+                          <strong>Where to add:</strong> Insert this content in the &quot;About the Author&quot; section, case study introduction, or as a credibility statement near the top of your article.
                         </p>
                       </div>
                     </div>
