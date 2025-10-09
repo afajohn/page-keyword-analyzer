@@ -9,7 +9,9 @@ import {
   GeminiAnalysis, 
   OptimizedKeywordRecommendation, 
   MetaDescriptionOptimization,
-  BERTContextAnalysis
+  BERTContextAnalysis,
+  AuthorityAnalysis,
+  AuthorityRecommendation
 } from '@/types/seo-analysis';
 import { BERTKeywordOptimizer } from './bert-keyword-optimizer';
 
@@ -67,13 +69,45 @@ export class AIAnalyzer {
 
       const geminiAnalysis = this.parseGeminiResponse(text);
       
-      // Enhance with BERT analysis
+      // NEW: Generate AI-Ready Content (async, non-blocking)
+      // TEMPORARILY DISABLED FOR TESTING - Remove the next 2 lines to enable
+      const ENABLE_AI_READY_CONTENT = true; // Set to false to temporarily disable
+      
+      let aiReadyContent = null;
+      let authorityAnalysis = null;
+      
+      if (ENABLE_AI_READY_CONTENT) {
+        console.log('🚀 Starting AI-Ready Content generation...');
+        aiReadyContent = await this.generateAIReadyContent(analysisData).catch(err => {
+          console.error('❌ AI-Ready Content generation failed:', err);
+          console.error('Error details:', err.message);
+          return null;
+        });
+        console.log('✅ AI-Ready Content result:', aiReadyContent);
+
+        // NEW: Generate Authority Analysis (async, non-blocking)
+        console.log('🚀 Starting Authority Analysis generation...');
+        authorityAnalysis = await this.generateAuthorityAnalysis(analysisData).catch(err => {
+          console.error('❌ Authority Analysis generation failed:', err);
+          console.error('Error details:', err.message);
+          return null;
+        });
+        console.log('✅ Authority Analysis result:', authorityAnalysis);
+      } else {
+        console.warn('⚠️ AI-Ready Content generation is DISABLED (ENABLE_AI_READY_CONTENT = false)');
+      }
+      
+      // Enhance with BERT analysis and new features
       return {
         ...geminiAnalysis,
         optimized_keywords: optimizedKeywords,
         meta_description_optimization: optimizedMetaDescription,
         bert_context_analysis: this.extractBERTAnalysis(analysisData),
-        search_intent_analysis: this.analyzeSearchIntent(analysisData)
+        search_intent_analysis: this.analyzeSearchIntent(analysisData),
+        // NEW: AI-Ready Content fields
+        ...(aiReadyContent || {}),
+        // NEW: Authority Analysis
+        authority_analysis: authorityAnalysis || undefined
       };
     } catch (error) {
       console.error('AI Analyzer Error:', error);
@@ -703,6 +737,420 @@ Provide actionable, data-driven recommendations that will improve search ranking
       return !!result.response;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * NEW FEATURE: Generate AI-Ready Content (Featured Snippets, FAQ Schema, E-E-A-T, Internal Links)
+   * Task 2.1-2.4 Implementation
+   */
+  private async generateAIReadyContent(analysisData: SEOAnalysisResult): Promise<{
+    ai_overview_snippet?: string;
+    optimized_faq_schema?: string;
+    eeat_content_suggestion?: string;
+    internal_link_boost_plan?: Array<{ source_page: string; suggested_anchor: string }>;
+  }> {
+    console.log('📝 Building AI-Ready Content prompt...');
+    const prompt = this.buildAIReadyContentPrompt(analysisData);
+    console.log('📝 Prompt built successfully, length:', prompt.length);
+    
+    console.log('🤖 Calling Gemini API for AI-Ready Content...');
+    const result = await this.model.generateContent({
+      contents: [{ 
+        role: 'user', 
+        parts: [{ text: prompt }] 
+      }]
+    });
+
+    if (!result?.response) {
+      throw new Error('Empty response from Gemini for AI-Ready Content');
+    }
+
+    const response = await result.response;
+    const text = response.text() || '';
+    console.log('📥 Received response from Gemini, length:', text.length);
+    
+    const parsed = this.parseAIReadyContentResponse(text);
+    console.log('✅ Parsed AI-Ready Content:', Object.keys(parsed));
+    return parsed;
+  }
+
+  /**
+   * Build prompt for AI-Ready Content Generation
+   */
+  private buildAIReadyContentPrompt(data: SEOAnalysisResult): string {
+    return `# AI-READY CONTENT GENERATION - ACTIONABLE SEO OPTIMIZATION
+
+## ROLE & OBJECTIVE
+You are an elite SEO content strategist specializing in AI Overview optimization, Featured Snippet generation, and E-E-A-T enhancement. Your task is to generate specific, ready-to-implement content that will immediately improve this page's ranking in AI-powered search results.
+
+## ANALYSIS DATA
+\`\`\`json
+${JSON.stringify({
+  url: data.page_metadata.url,
+  title: data.page_metadata.title_tag,
+  primary_keywords: data.inferred_keywords.primary.keywords.slice(0, 3),
+  core_topic: data.semantic_analysis.core_topic_analysis,
+  eeat_score: data.semantic_analysis.eeat_score,
+  query_fan_out: data.semantic_analysis.query_fan_out,
+  headings: data.structured_on_page_data.headings_and_keywords.slice(0, 10)
+}, null, 2)}
+\`\`\`
+
+## TASK 1: DIRECT ANSWER SNIPPET (ai_overview_snippet)
+**Requirements:**
+- Maximum 25 words
+- Answer the core query directly and completely
+- Optimized for Google Featured Snippets and AI Overviews
+- Use natural, conversational language
+- Include the primary keyword naturally
+
+**Format:** Plain text, exactly one sentence, no markdown.
+
+## TASK 2: FAQ SCHEMA GENERATION (optimized_faq_schema)
+**Requirements:**
+- Select 3-5 most relevant questions from the related queries or infer from content
+- Provide concise, accurate answers (50-75 words each)
+- Format as valid JSON-LD FAQPage Schema
+- Ensure all JSON syntax is correct (no trailing commas, proper escaping)
+
+**Format:** Valid JSON-LD code block ready to copy-paste into <script> tag.
+
+## TASK 3: E-E-A-T CONTENT SUGGESTION (eeat_content_suggestion)
+**Analysis:** The E-E-A-T score shows: Expertise=${data.semantic_analysis.eeat_score?.expertise || 0}, Experience=${data.semantic_analysis.eeat_score?.experience || 0}, Authoritativeness=${data.semantic_analysis.eeat_score?.authoritativeness || 0}, Trustworthiness=${data.semantic_analysis.eeat_score?.trustworthiness || 0}
+
+**Requirements:**
+- Identify the LOWEST scoring E-E-A-T component
+- Generate a 100-150 word content block to boost that specific score
+- If Expertise is low: Add technical depth, methodology, or framework explanation
+- If Experience is low: Add first-hand account, case study intro, or personal insight
+- If Authoritativeness is low: Add citations, expert quotes, or data sources
+- If Trustworthiness is low: Add author credentials, contact info, or transparency statement
+- Make it ready to insert directly into the page
+
+**Format:** Plain text paragraph, ready to copy-paste.
+
+## TASK 4: INTERNAL LINK STRATEGY (internal_link_boost_plan)
+**Requirements:**
+- Suggest 3 high-authority pages on the same domain that should link to this article
+- For each suggestion, provide: 
+  - Source page type (e.g., "Homepage", "Category: [Topic]", "High-Traffic Article: [Title]")
+  - Exact anchor text to use (keyword-rich but natural)
+- Prioritize pages that would pass the most authority
+
+**Format:** Array of objects.
+
+## OUTPUT FORMAT
+Provide your response as a VALID JSON object with this exact structure:
+
+\`\`\`json
+{
+  "ai_overview_snippet": "Your 25-word direct answer here",
+  "optimized_faq_schema": "{\\"@context\\":\\"https://schema.org\\",\\"@type\\":\\"FAQPage\\",\\"mainEntity\\":[{\\"@type\\":\\"Question\\",\\"name\\":\\"Question 1?\\",\\"acceptedAnswer\\":{\\"@type\\":\\"Answer\\",\\"text\\":\\"Answer 1\\"}}]}",
+  "eeat_content_suggestion": "Your 100-150 word content block here",
+  "internal_link_boost_plan": [
+    {"source_page": "Homepage or High-PA Page Type", "suggested_anchor": "Natural anchor text with keyword"},
+    {"source_page": "Category Page: [Topic]", "suggested_anchor": "Another natural anchor"},
+    {"source_page": "High-Traffic Article: [Title]", "suggested_anchor": "Third anchor text"}
+  ]
+}
+\`\`\`
+
+**CRITICAL RULES:**
+- Return ONLY the JSON object, no additional text
+- Ensure all JSON is valid (no trailing commas, proper escaping)
+- ai_overview_snippet must be ≤25 words
+- optimized_faq_schema must be a valid JSON-LD string (escaped quotes)
+- eeat_content_suggestion must be 100-150 words
+- internal_link_boost_plan must have exactly 3 items
+
+Generate the content now:`;
+  }
+
+  /**
+   * Parse AI-Ready Content response
+   */
+  private parseAIReadyContentResponse(response: string): {
+    ai_overview_snippet?: string;
+    optimized_faq_schema?: string;
+    eeat_content_suggestion?: string;
+    internal_link_boost_plan?: Array<{ source_page: string; suggested_anchor: string }>;
+  } {
+    try {
+      const cleanedResponse = response.trim();
+      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        
+        // Validate and sanitize
+        return {
+          ai_overview_snippet: this.validateSnippet(parsed.ai_overview_snippet),
+          optimized_faq_schema: this.validateFAQSchema(parsed.optimized_faq_schema),
+          eeat_content_suggestion: this.sanitizeText(parsed.eeat_content_suggestion),
+          internal_link_boost_plan: this.validateInternalLinks(parsed.internal_link_boost_plan)
+        };
+      }
+      
+      return {};
+    } catch (error) {
+      console.error('Error parsing AI-Ready Content response:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Validate snippet is ≤25 words
+   */
+  private validateSnippet(snippet: unknown): string | undefined {
+    if (typeof snippet !== 'string') return undefined;
+    
+    const words = snippet.trim().split(/\s+/);
+    if (words.length > 25) {
+      // Truncate to 25 words
+      return words.slice(0, 25).join(' ') + '...';
+    }
+    
+    return snippet.trim();
+  }
+
+  /**
+   * Validate FAQ Schema is valid JSON
+   */
+  private validateFAQSchema(schema: unknown): string | undefined {
+    if (typeof schema !== 'string') return undefined;
+    
+    try {
+      // Try to parse to ensure it's valid JSON
+      const parsed = JSON.parse(schema);
+      
+      // Verify it has the required FAQPage structure
+      if (parsed['@type'] === 'FAQPage' && Array.isArray(parsed.mainEntity)) {
+        return JSON.stringify(parsed, null, 2);
+      }
+      
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Validate internal links array
+   */
+  private validateInternalLinks(links: unknown): Array<{ source_page: string; suggested_anchor: string }> | undefined {
+    if (!Array.isArray(links)) return undefined;
+    
+    const validLinks = links
+      .filter(link => 
+        typeof link === 'object' && 
+        link !== null && 
+        typeof link.source_page === 'string' && 
+        typeof link.suggested_anchor === 'string'
+      )
+      .map(link => ({
+        source_page: link.source_page,
+        suggested_anchor: link.suggested_anchor
+      }));
+    
+    return validLinks.length > 0 ? validLinks : undefined;
+  }
+
+  /**
+   * NEW FEATURE: Generate Domain/Page Authority Analysis
+   * Authority Enhancement Implementation
+   */
+  private async generateAuthorityAnalysis(analysisData: SEOAnalysisResult): Promise<AuthorityAnalysis> {
+    console.log('📝 Building Authority Analysis prompt...');
+    const prompt = this.buildAuthorityAnalysisPrompt(analysisData);
+    console.log('📝 Prompt built successfully, length:', prompt.length);
+    
+    console.log('🤖 Calling Gemini API for Authority Analysis...');
+    const result = await this.model.generateContent({
+      contents: [{ 
+        role: 'user', 
+        parts: [{ text: prompt }] 
+      }]
+    });
+
+    if (!result?.response) {
+      throw new Error('Empty response from Gemini for Authority Analysis');
+    }
+
+    const response = await result.response;
+    const text = response.text() || '';
+    console.log('📥 Received response from Gemini, length:', text.length);
+    
+    const parsed = this.parseAuthorityAnalysisResponse(text);
+    console.log('✅ Parsed Authority Analysis, scores:', {
+      linkability: parsed.content_linkability_score,
+      internal: parsed.internal_link_strength,
+      backlink: parsed.backlink_opportunity_score
+    });
+    return parsed;
+  }
+
+  /**
+   * Build prompt for Authority Analysis
+   */
+  private buildAuthorityAnalysisPrompt(data: SEOAnalysisResult): string {
+    return `# DOMAIN & PAGE AUTHORITY ENHANCEMENT ANALYSIS
+
+## ROLE & OBJECTIVE
+You are an elite SEO authority specialist focusing on Page Authority (PA) and Domain Authority (DA) optimization. Analyze this article and provide specific, actionable recommendations to increase both metrics.
+
+## CONTEXT
+**Page Authority (PA):** Page-specific ranking strength (0-100)
+**Domain Authority (DA):** Overall website authority (0-100)
+
+**Key Factors:**
+- PA: On-page content quality, internal linking, unique linkable assets
+- DA: Backlink profile, site-wide trust signals, technical SEO
+
+## ARTICLE DATA
+\`\`\`json
+${JSON.stringify({
+  url: data.page_metadata.url,
+  title: data.page_metadata.title_tag,
+  word_count: data.structured_on_page_data.word_count,
+  headings_count: data.structured_on_page_data.headings_and_keywords.length,
+  content_quality_score: data.semantic_analysis.content_quality_score,
+  topical_authority_score: data.semantic_analysis.topical_authority_score,
+  eeat_score: data.semantic_analysis.eeat_score,
+  entities: data.semantic_analysis.entity_extraction,
+  primary_keywords: data.inferred_keywords.primary.keywords.slice(0, 3)
+}, null, 2)}
+\`\`\`
+
+## ANALYSIS TASKS
+
+### 1. CONTENT LINKABILITY ASSESSMENT (0-100 score)
+Evaluate if this content is a "linkable asset":
+- Does it contain original data, research, or unique insights?
+- Is it comprehensive enough to be a definitive resource?
+- Does it have visual elements (potential for infographics/tools)?
+- Is it evergreen or trending content?
+
+### 2. INTERNAL LINK STRENGTH ASSESSMENT (0-100 score)
+Evaluate internal linking structure:
+- Quality and quantity of internal links within the article
+- Potential for other high-authority pages to link here
+- Strategic anchor text opportunities
+
+### 3. BACKLINK OPPORTUNITY ASSESSMENT (0-100 score)
+Evaluate external link potential:
+- Quotable statistics or expert insights
+- Potential for guest post/digital PR angles
+- Industry relevance and shareability
+
+## OUTPUT REQUIREMENTS
+
+Provide your response as a VALID JSON object:
+
+\`\`\`json
+{
+  "summary": "2-3 sentence summary of the article's current authority strengths and most critical improvement areas",
+  "content_linkability_score": 75,
+  "internal_link_strength": 60,
+  "backlink_opportunity_score": 80,
+  "page_authority_recommendations": [
+    {
+      "type": "Content",
+      "priority": "High",
+      "description": "Specific on-page improvement to boost PA (e.g., 'Expand section X with original survey data from 100+ users to create a unique, quotable statistic')"
+    },
+    {
+      "type": "Internal Link",
+      "priority": "High",
+      "description": "Specific internal linking strategy (e.g., 'Add internal link from the homepage using anchor text [keyword] to pass authority to this page')"
+    },
+    {
+      "type": "Structure",
+      "priority": "Medium",
+      "description": "Content structure improvement for better crawlability and featured snippet potential"
+    }
+  ],
+  "domain_authority_recommendations": [
+    {
+      "type": "Linkable Asset",
+      "priority": "High",
+      "description": "Specific content repurposing for link building (e.g., 'Transform the 10-point checklist in Section 3 into a free, downloadable PDF tool for outreach campaigns')"
+    },
+    {
+      "type": "Off-Page",
+      "priority": "High",
+      "description": "Specific link building strategy (e.g., 'Pitch the unique data in Figure 2 to industry publications like [Publication Name] for backlink acquisition')"
+    },
+    {
+      "type": "Technical SEO",
+      "priority": "Medium",
+      "description": "Site-wide technical improvements (e.g., 'Optimize Core Web Vitals: compress images, implement lazy loading, minify CSS/JS')"
+    }
+  ]
+}
+\`\`\`
+
+**RULES:**
+- Scores must be realistic (0-100)
+- Each recommendation must be SPECIFIC and ACTIONABLE
+- Prioritize recommendations: High = Implement immediately, Medium = Plan for next quarter, Low = Long-term
+- Focus on recommendations that move the needle on both PA and DA
+- Page Authority recommendations: 3-5 items (focus on this specific page)
+- Domain Authority recommendations: 3-5 items (focus on site-wide improvements)
+
+Generate the analysis now:`;
+  }
+
+  /**
+   * Parse Authority Analysis response
+   */
+  private parseAuthorityAnalysisResponse(response: string): AuthorityAnalysis {
+    try {
+      const cleanedResponse = response.trim();
+      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        
+        return {
+          summary: typeof parsed.summary === 'string' ? parsed.summary : 'Authority analysis completed.',
+          content_linkability_score: typeof parsed.content_linkability_score === 'number' ? parsed.content_linkability_score : 50,
+          internal_link_strength: typeof parsed.internal_link_strength === 'number' ? parsed.internal_link_strength : 50,
+          backlink_opportunity_score: typeof parsed.backlink_opportunity_score === 'number' ? parsed.backlink_opportunity_score : 50,
+          page_authority_recommendations: Array.isArray(parsed.page_authority_recommendations) ? 
+            parsed.page_authority_recommendations.map((rec: unknown) => {
+              const recommendation = rec as { type: string; priority: string; description: string };
+              return {
+                type: recommendation.type as AuthorityRecommendation['type'],
+                priority: recommendation.priority as AuthorityRecommendation['priority'],
+                description: recommendation.description
+              };
+            }) : [],
+          domain_authority_recommendations: Array.isArray(parsed.domain_authority_recommendations) ? 
+            parsed.domain_authority_recommendations.map((rec: unknown) => {
+              const recommendation = rec as { type: string; priority: string; description: string };
+              return {
+                type: recommendation.type as AuthorityRecommendation['type'],
+                priority: recommendation.priority as AuthorityRecommendation['priority'],
+                description: recommendation.description
+              };
+            }) : []
+        };
+      }
+      
+      throw new Error('No valid JSON found in response');
+    } catch (error) {
+      console.error('Error parsing Authority Analysis response:', error);
+      
+      // Return default structure
+      return {
+        summary: 'Authority analysis unavailable.',
+        content_linkability_score: 50,
+        internal_link_strength: 50,
+        backlink_opportunity_score: 50,
+        page_authority_recommendations: [],
+        domain_authority_recommendations: []
+      };
     }
   }
 }

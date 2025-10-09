@@ -199,6 +199,21 @@ export interface MetaDescriptionOptimization {
   improvements: string[];
 }
 
+export interface AuthorityRecommendation {
+  type: 'Content' | 'Structure' | 'Internal Link' | 'Off-Page' | 'Linkable Asset' | 'Technical SEO';
+  priority: 'High' | 'Medium' | 'Low';
+  description: string;
+}
+
+export interface AuthorityAnalysis {
+  summary: string;
+  page_authority_recommendations: AuthorityRecommendation[];
+  domain_authority_recommendations: AuthorityRecommendation[];
+  content_linkability_score: number; // 0-100 scale
+  internal_link_strength: number; // 0-100 scale
+  backlink_opportunity_score: number; // 0-100 scale
+}
+
 export interface GeminiAnalysis {
   reasoning_primary_keywords: string;
   reasoning_secondary_keywords: string;
@@ -221,6 +236,16 @@ export interface GeminiAnalysis {
     transactional: number;
     commercial: number;
   };
+  // NEW: AI-Ready Content Generation Module
+  ai_overview_snippet?: string; // Task 2.1: Direct Answer for Featured Snippets (≤25 words)
+  optimized_faq_schema?: string; // Task 2.2: JSON-LD FAQPage Schema
+  eeat_content_suggestion?: string; // Task 2.3: Concrete content block to boost E-E-A-T
+  internal_link_boost_plan?: Array<{
+    source_page: string; // Placeholder for high-PA page
+    suggested_anchor: string; // Anchor text to use
+  }>; // Task 2.4: Internal linking strategy
+  // NEW: Domain/Page Authority Enhancement
+  authority_analysis?: AuthorityAnalysis;
 }
 
 export interface EEATScore {

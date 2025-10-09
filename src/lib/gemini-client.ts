@@ -4,7 +4,12 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { SEOAnalysisResult, GeminiAnalysis } from '@/types/seo-analysis';
+import { 
+  SEOAnalysisResult, 
+  GeminiAnalysis, 
+  AuthorityAnalysis, 
+  AuthorityRecommendation 
+} from '@/types/seo-analysis';
 
 type GenerativeModel = ReturnType<GoogleGenerativeAI['getGenerativeModel']>;
 
@@ -35,7 +40,32 @@ export class GeminiClient {
         throw new Error('No text returned by Gemini');
       }
 
-      return this.parseGeminiResponse(text);
+      const baseAnalysis = this.parseGeminiResponse(text);
+
+      // NEW: Generate AI-Ready Content (async, non-blocking)
+      console.log('🚀 Starting AI-Ready Content generation...');
+      const aiReadyContent = await this.generateAIReadyContent(analysisData).catch(err => {
+        console.error('❌ AI-Ready Content generation failed:', err);
+        console.error('Error details:', err.message);
+        return null;
+      });
+      console.log('✅ AI-Ready Content result:', aiReadyContent);
+
+      // NEW: Generate Authority Analysis (async, non-blocking)
+      console.log('🚀 Starting Authority Analysis generation...');
+      const authorityAnalysis = await this.generateAuthorityAnalysis(analysisData).catch(err => {
+        console.error('❌ Authority Analysis generation failed:', err);
+        console.error('Error details:', err.message);
+        return null;
+      });
+      console.log('✅ Authority Analysis result:', authorityAnalysis);
+
+      // Merge all analyses
+      return {
+        ...baseAnalysis,
+        ...(aiReadyContent || {}),
+        authority_analysis: authorityAnalysis || undefined
+      };
     } catch (error) {
       console.error('Gemini API Error:', error);
       
@@ -369,6 +399,287 @@ Provide your analysis as a JSON object with the following structure:
       return !!result.response;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * NEW: Generate AI-Ready Content (Featured Snippets, FAQ Schema, E-E-A-T, Internal Links)
+   */
+  private async generateAIReadyContent(analysisData: SEOAnalysisResult): Promise<{
+    ai_overview_snippet?: string;
+    optimized_faq_schema?: string;
+    eeat_content_suggestion?: string;
+    internal_link_boost_plan?: Array<{ source_page: string; suggested_anchor: string }>;
+  }> {
+    console.log('📝 Building AI-Ready Content prompt...');
+    const prompt = this.buildAIReadyContentPrompt(analysisData);
+    console.log('📝 Prompt built, calling Gemini...');
+    
+    const result = await this.model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
+    });
+
+    if (!result?.response) {
+      throw new Error('Empty response from Gemini for AI-Ready Content');
+    }
+
+    const response = await result.response;
+    const text = response.text() || '';
+    console.log('📥 Received response, length:', text.length);
+    
+    return this.parseAIReadyContentResponse(text);
+  }
+
+  /**
+   * Build prompt for AI-Ready Content
+   */
+  private buildAIReadyContentPrompt(data: SEOAnalysisResult): string {
+    return `# AI-READY CONTENT GENERATION
+
+You are an elite SEO content strategist. Generate specific, ready-to-implement content.
+
+## ANALYSIS DATA
+\`\`\`json
+${JSON.stringify({
+  url: data.page_metadata.url,
+  title: data.page_metadata.title_tag,
+  primary_keywords: data.inferred_keywords?.primary?.keywords?.slice(0, 3) || [],
+  eeat_score: data.semantic_analysis?.eeat_score || {},
+  query_fan_out: data.semantic_analysis?.query_fan_out || {},
+  headings: data.structured_on_page_data?.headings_and_keywords?.slice(0, 10) || []
+}, null, 2)}
+\`\`\`
+
+## YOUR TASKS:
+
+1. **DIRECT ANSWER SNIPPET** (ai_overview_snippet):
+   - Exactly 25 words or less
+   - Direct answer to the main query
+   - Natural, conversational language
+
+2. **FAQ SCHEMA** (optimized_faq_schema):
+   - Valid JSON-LD FAQPage Schema
+   - 3-5 relevant questions
+   - Concise answers (50-75 words each)
+   - Properly escaped JSON string
+
+3. **E-E-A-T CONTENT** (eeat_content_suggestion):
+   - 100-150 words
+   - Target the LOWEST E-E-A-T component
+   - Ready to insert directly
+
+4. **INTERNAL LINKS** (internal_link_boost_plan):
+   - 3 recommendations
+   - Format: [{"source_page": "...", "suggested_anchor": "..."}]
+
+## OUTPUT FORMAT (CRITICAL):
+Return ONLY valid JSON:
+
+\`\`\`json
+{
+  "ai_overview_snippet": "Your 25-word answer here",
+  "optimized_faq_schema": "{\\"@context\\":\\"https://schema.org\\",\\"@type\\":\\"FAQPage\\",\\"mainEntity\\":[{\\"@type\\":\\"Question\\",\\"name\\":\\"Q1?\\",\\"acceptedAnswer\\":{\\"@type\\":\\"Answer\\",\\"text\\":\\"A1\\"}}]}",
+  "eeat_content_suggestion": "Your 100-150 word content",
+  "internal_link_boost_plan": [
+    {"source_page": "Homepage", "suggested_anchor": "anchor text"},
+    {"source_page": "Category Page", "suggested_anchor": "anchor text"},
+    {"source_page": "High-Traffic Article", "suggested_anchor": "anchor text"}
+  ]
+}
+\`\`\`
+
+Return ONLY the JSON object. No markdown, no extra text.`;
+  }
+
+  /**
+   * Parse AI-Ready Content response
+   */
+  private parseAIReadyContentResponse(response: string): {
+    ai_overview_snippet?: string;
+    optimized_faq_schema?: string;
+    eeat_content_suggestion?: string;
+    internal_link_boost_plan?: Array<{ source_page: string; suggested_anchor: string }>;
+  } {
+    try {
+      const cleanedResponse = response.trim().replace(/^```json\n?|```$/g, '');
+      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        
+        return {
+          ai_overview_snippet: this.validateSnippet(parsed.ai_overview_snippet),
+          optimized_faq_schema: this.validateFAQSchema(parsed.optimized_faq_schema),
+          eeat_content_suggestion: typeof parsed.eeat_content_suggestion === 'string' ? parsed.eeat_content_suggestion : undefined,
+          internal_link_boost_plan: Array.isArray(parsed.internal_link_boost_plan) ? parsed.internal_link_boost_plan : undefined
+        };
+      }
+      
+      return {};
+    } catch (error) {
+      console.error('Error parsing AI-Ready Content:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Validate snippet is ≤25 words
+   */
+  private validateSnippet(snippet: unknown): string | undefined {
+    if (typeof snippet !== 'string') return undefined;
+    const words = snippet.trim().split(/\s+/);
+    if (words.length > 25) {
+      return words.slice(0, 25).join(' ') + '...';
+    }
+    return snippet.trim();
+  }
+
+  /**
+   * Validate FAQ Schema
+   */
+  private validateFAQSchema(schema: unknown): string | undefined {
+    if (typeof schema !== 'string') return undefined;
+    try {
+      const parsed = JSON.parse(schema);
+      if (parsed['@type'] === 'FAQPage' && Array.isArray(parsed.mainEntity)) {
+        return JSON.stringify(parsed, null, 2);
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * NEW: Generate Domain/Page Authority Analysis
+   */
+  private async generateAuthorityAnalysis(analysisData: SEOAnalysisResult): Promise<AuthorityAnalysis> {
+    console.log('📝 Building Authority Analysis prompt...');
+    const prompt = this.buildAuthorityAnalysisPrompt(analysisData);
+    console.log('📝 Prompt built, calling Gemini...');
+    
+    const result = await this.model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
+    });
+
+    if (!result?.response) {
+      throw new Error('Empty response from Gemini for Authority Analysis');
+    }
+
+    const response = await result.response;
+    const text = response.text() || '';
+    console.log('📥 Received response, length:', text.length);
+    
+    return this.parseAuthorityAnalysisResponse(text);
+  }
+
+  /**
+   * Build prompt for Authority Analysis
+   */
+  private buildAuthorityAnalysisPrompt(data: SEOAnalysisResult): string {
+    return `# DOMAIN & PAGE AUTHORITY ANALYSIS
+
+You are an elite SEO authority specialist. Analyze and provide specific recommendations.
+
+## ARTICLE DATA
+\`\`\`json
+${JSON.stringify({
+  url: data.page_metadata.url,
+  title: data.page_metadata.title_tag,
+  word_count: data.structured_on_page_data?.word_count || 0,
+  content_quality_score: data.semantic_analysis?.content_quality_score || 0,
+  eeat_score: data.semantic_analysis?.eeat_score || {},
+  primary_keywords: data.inferred_keywords?.primary?.keywords?.slice(0, 3) || []
+}, null, 2)}
+\`\`\`
+
+## YOUR TASKS:
+
+Provide scores (0-100) and specific recommendations:
+
+1. **Content Linkability Score**: How likely others will link to this
+2. **Internal Link Strength**: Quality of internal linking
+3. **Backlink Opportunity Score**: Potential for external links
+
+4. **Page Authority Recommendations** (3-5 items):
+   - Type: Content, Structure, or Internal Link
+   - Priority: High, Medium, or Low
+   - Specific, actionable description
+
+5. **Domain Authority Recommendations** (3-5 items):
+   - Type: Off-Page, Linkable Asset, or Technical SEO
+   - Priority: High, Medium, or Low
+   - Specific, actionable description
+
+## OUTPUT FORMAT:
+Return ONLY valid JSON:
+
+\`\`\`json
+{
+  "summary": "2-3 sentence summary of authority status",
+  "content_linkability_score": 75,
+  "internal_link_strength": 60,
+  "backlink_opportunity_score": 80,
+  "page_authority_recommendations": [
+    {"type": "Content", "priority": "High", "description": "Specific action"}
+  ],
+  "domain_authority_recommendations": [
+    {"type": "Off-Page", "priority": "High", "description": "Specific action"}
+  ]
+}
+\`\`\`
+
+Return ONLY the JSON object.`;
+  }
+
+  /**
+   * Parse Authority Analysis response
+   */
+  private parseAuthorityAnalysisResponse(response: string): AuthorityAnalysis {
+    try {
+      const cleanedResponse = response.trim().replace(/^```json\n?|```$/g, '');
+      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        
+        return {
+          summary: typeof parsed.summary === 'string' ? parsed.summary : 'Authority analysis completed.',
+          content_linkability_score: typeof parsed.content_linkability_score === 'number' ? parsed.content_linkability_score : 50,
+          internal_link_strength: typeof parsed.internal_link_strength === 'number' ? parsed.internal_link_strength : 50,
+          backlink_opportunity_score: typeof parsed.backlink_opportunity_score === 'number' ? parsed.backlink_opportunity_score : 50,
+          page_authority_recommendations: Array.isArray(parsed.page_authority_recommendations) ? 
+            parsed.page_authority_recommendations.map((rec: unknown) => {
+              const recommendation = rec as { type: string; priority: string; description: string };
+              return {
+                type: recommendation.type as AuthorityRecommendation['type'],
+                priority: recommendation.priority as AuthorityRecommendation['priority'],
+                description: recommendation.description
+              };
+            }) : [],
+          domain_authority_recommendations: Array.isArray(parsed.domain_authority_recommendations) ? 
+            parsed.domain_authority_recommendations.map((rec: unknown) => {
+              const recommendation = rec as { type: string; priority: string; description: string };
+              return {
+                type: recommendation.type as AuthorityRecommendation['type'],
+                priority: recommendation.priority as AuthorityRecommendation['priority'],
+                description: recommendation.description
+              };
+            }) : []
+        };
+      }
+      
+      throw new Error('No valid JSON found');
+    } catch (error) {
+      console.error('Error parsing Authority Analysis:', error);
+      return {
+        summary: 'Authority analysis unavailable.',
+        content_linkability_score: 50,
+        internal_link_strength: 50,
+        backlink_opportunity_score: 50,
+        page_authority_recommendations: [],
+        domain_authority_recommendations: []
+      };
     }
   }
 }
