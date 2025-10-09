@@ -32,7 +32,7 @@ interface AnalysisResultsProps {
 
 export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
   const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'eeat-analysis' | 'ai-analysis' | 'technical' | 'query-fanout'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'eeat-analysis' | 'ai-analysis' | 'ai-ready-content' | 'technical' | 'query-fanout'>('overview')
 
   /**
    * Format AI analysis text for better readability
@@ -295,6 +295,7 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
     { id: 'overview', label: 'Overview', icon: TrendingUp },
     { id: 'eeat-analysis', label: 'E-E-A-T', icon: Users },
     { id: 'ai-analysis', label: 'AI Analysis', icon: Brain },
+    { id: 'ai-ready-content', label: 'AI-Ready Content', icon: Zap },
     { id: 'technical', label: 'Technical', icon: FileText }
   ]
 
@@ -338,7 +339,7 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as 'overview' | 'eeat-analysis' | 'query-fanout' | 'ai-analysis' | 'technical')}
+              onClick={() => setActiveTab(tab.id as 'overview' | 'eeat-analysis' | 'query-fanout' | 'ai-analysis' | 'ai-ready-content' | 'technical')}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'bg-white text-gray-900 shadow-sm'
@@ -1084,6 +1085,353 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
                 </div>
               </CardContent>
             </Card>
+          )}
+        </div>
+      )}
+
+      {/* NEW: AI-Ready Content Tab */}
+      {activeTab === 'ai-ready-content' && (
+        <div className="space-y-6">
+          {!result.gemini_analysis.ai_overview_snippet && 
+           !result.gemini_analysis.optimized_faq_schema && 
+           !result.gemini_analysis.eeat_content_suggestion && 
+           !result.gemini_analysis.internal_link_boost_plan &&
+           !result.gemini_analysis.authority_analysis ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-gray-400" />
+                  AI-Ready Content Unavailable
+                </CardTitle>
+                <CardDescription>
+                  AI-generated content recommendations are not available. Ensure AI analysis is enabled and the Gemini API key is configured.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : (
+            <>
+              {/* Direct Answer Snippet for Featured Snippets */}
+              {result.gemini_analysis.ai_overview_snippet && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-blue-600" />
+                      Featured Snippet / AI Overview Answer
+                    </CardTitle>
+                    <CardDescription>
+                      Optimized direct answer (≤25 words) ready for Featured Snippets and AI Overviews
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 p-6 rounded-lg">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Zap className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-lg font-medium text-gray-900 leading-relaxed">
+                            {result.gemini_analysis.ai_overview_snippet}
+                          </p>
+                          <div className="mt-4 flex items-center gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                navigator.clipboard.writeText(result.gemini_analysis.ai_overview_snippet || '');
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                              }}
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              {copied ? 'Copied!' : 'Copy Snippet'}
+                            </Button>
+                            <span className="text-xs text-gray-500">
+                              {result.gemini_analysis.ai_overview_snippet.split(/\s+/).length} words
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-900">
+                        <strong>How to use:</strong> Add this answer at the very beginning of your article or in a prominent FAQ section to increase chances of appearing in Featured Snippets and AI Overviews.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* FAQ Schema (JSON-LD) */}
+              {result.gemini_analysis.optimized_faq_schema && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-green-600" />
+                      FAQ Schema (JSON-LD)
+                    </CardTitle>
+                    <CardDescription>
+                      Ready-to-implement FAQPage Schema Markup for enhanced SERP visibility
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="bg-gray-900 rounded-lg p-4 relative overflow-x-auto">
+                        <pre className="text-sm text-green-400 font-mono overflow-x-auto whitespace-pre-wrap break-words">
+                          {result.gemini_analysis.optimized_faq_schema}
+                        </pre>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="absolute top-2 right-2 bg-gray-800 hover:bg-gray-700"
+                          onClick={() => {
+                            navigator.clipboard.writeText(result.gemini_analysis.optimized_faq_schema || '');
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          {copied ? 'Copied!' : 'Copy Code'}
+                        </Button>
+                      </div>
+                      <div className="p-4 bg-green-50 rounded-lg space-y-2">
+                        <p className="text-sm font-medium text-green-900">
+                          <strong>Implementation Instructions:</strong>
+                        </p>
+                        <ol className="text-sm text-green-800 space-y-1 list-decimal list-inside">
+                          <li>Copy the JSON-LD code above</li>
+                          <li>Paste it inside a <code className="bg-green-100 px-1 rounded">&lt;script type="application/ld+json"&gt;</code> tag</li>
+                          <li>Place the script tag in the <code className="bg-green-100 px-1 rounded">&lt;head&gt;</code> section of your HTML</li>
+                          <li>Test using Google's <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener noreferrer" className="underline font-medium">Rich Results Test</a></li>
+                        </ol>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* E-E-A-T Content Suggestion */}
+              {result.gemini_analysis.eeat_content_suggestion && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-purple-600" />
+                      E-E-A-T Enhancement Content
+                    </CardTitle>
+                    <CardDescription>
+                      Ready-to-insert content block to boost your lowest E-E-A-T score component
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="bg-purple-50 border-l-4 border-purple-500 p-6 rounded-lg">
+                        <div className="prose prose-sm max-w-none text-gray-800">
+                          {result.gemini_analysis.eeat_content_suggestion}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(result.gemini_analysis.eeat_content_suggestion || '');
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          {copied ? 'Copied!' : 'Copy Content'}
+                        </Button>
+                        <span className="text-xs text-gray-500">
+                          {result.gemini_analysis.eeat_content_suggestion.split(/\s+/).length} words
+                        </span>
+                      </div>
+                      <div className="p-3 bg-purple-50 rounded-lg">
+                        <p className="text-sm text-purple-900">
+                          <strong>Where to add:</strong> Insert this content in the "About the Author" section, case study introduction, or as a credibility statement near the top of your article.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Internal Link Strategy */}
+              {result.gemini_analysis.internal_link_boost_plan && result.gemini_analysis.internal_link_boost_plan.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-orange-600" />
+                      Internal Link Strategy
+                    </CardTitle>
+                    <CardDescription>
+                      High-authority pages that should link to this article to boost Page Authority
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50 border-b-2 border-gray-200">
+                            <th className="text-left p-3 font-semibold text-gray-700">Source Page</th>
+                            <th className="text-left p-3 font-semibold text-gray-700">Suggested Anchor Text</th>
+                            <th className="text-center p-3 font-semibold text-gray-700">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result.gemini_analysis.internal_link_boost_plan.map((link, index) => (
+                            <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="p-3 text-gray-800">{link.source_page}</td>
+                              <td className="p-3">
+                                <code className="bg-orange-50 text-orange-800 px-2 py-1 rounded text-sm">
+                                  {link.suggested_anchor}
+                                </code>
+                              </td>
+                              <td className="p-3 text-center">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(`${link.source_page}: "${link.suggested_anchor}"`);
+                                    setCopied(true);
+                                    setTimeout(() => setCopied(false), 2000);
+                                  }}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mt-4 p-3 bg-orange-50 rounded-lg">
+                      <p className="text-sm text-orange-900">
+                        <strong>Implementation:</strong> Add internal links from these high-authority pages using the suggested anchor text to pass link equity to this article and improve its Page Authority score.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Domain/Page Authority Analysis */}
+              {result.gemini_analysis.authority_analysis && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-indigo-600" />
+                      Domain & Page Authority Enhancement
+                    </CardTitle>
+                    <CardDescription>
+                      Comprehensive analysis and actionable recommendations to boost PA and DA
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      {/* Summary */}
+                      <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-lg">
+                        <p className="text-sm text-indigo-900">{result.gemini_analysis.authority_analysis.summary}</p>
+                      </div>
+
+                      {/* Authority Scores */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white border rounded-lg p-4">
+                          <div className="text-sm font-medium text-gray-600 mb-2">Content Linkability</div>
+                          <div className="text-3xl font-bold text-blue-600">
+                            {result.gemini_analysis.authority_analysis.content_linkability_score}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">Out of 100</div>
+                        </div>
+                        <div className="bg-white border rounded-lg p-4">
+                          <div className="text-sm font-medium text-gray-600 mb-2">Internal Link Strength</div>
+                          <div className="text-3xl font-bold text-green-600">
+                            {result.gemini_analysis.authority_analysis.internal_link_strength}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">Out of 100</div>
+                        </div>
+                        <div className="bg-white border rounded-lg p-4">
+                          <div className="text-sm font-medium text-gray-600 mb-2">Backlink Opportunity</div>
+                          <div className="text-3xl font-bold text-purple-600">
+                            {result.gemini_analysis.authority_analysis.backlink_opportunity_score}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">Out of 100</div>
+                        </div>
+                      </div>
+
+                      {/* Page Authority Recommendations */}
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <Target className="h-5 w-5 text-blue-600" />
+                          Page Authority (PA) Recommendations
+                        </h4>
+                        <div className="space-y-3">
+                          {result.gemini_analysis.authority_analysis.page_authority_recommendations.map((rec, index) => (
+                            <div 
+                              key={index} 
+                              className={`border-l-4 p-4 rounded-lg ${
+                                rec.priority === 'High' ? 'border-red-500 bg-red-50' :
+                                rec.priority === 'Medium' ? 'border-yellow-500 bg-yellow-50' :
+                                'border-gray-500 bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                                      rec.priority === 'High' ? 'bg-red-100 text-red-800' :
+                                      rec.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {rec.priority} Priority
+                                    </span>
+                                    <span className="text-xs font-medium text-gray-600">{rec.type}</span>
+                                  </div>
+                                  <p className="text-sm text-gray-800">{rec.description}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Domain Authority Recommendations */}
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <Zap className="h-5 w-5 text-purple-600" />
+                          Domain Authority (DA) Recommendations
+                        </h4>
+                        <div className="space-y-3">
+                          {result.gemini_analysis.authority_analysis.domain_authority_recommendations.map((rec, index) => (
+                            <div 
+                              key={index} 
+                              className={`border-l-4 p-4 rounded-lg ${
+                                rec.priority === 'High' ? 'border-red-500 bg-red-50' :
+                                rec.priority === 'Medium' ? 'border-yellow-500 bg-yellow-50' :
+                                'border-gray-500 bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                                      rec.priority === 'High' ? 'bg-red-100 text-red-800' :
+                                      rec.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {rec.priority} Priority
+                                    </span>
+                                    <span className="text-xs font-medium text-gray-600">{rec.type}</span>
+                                  </div>
+                                  <p className="text-sm text-gray-800">{rec.description}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </div>
       )}
